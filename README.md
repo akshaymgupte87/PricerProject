@@ -12,7 +12,7 @@ Deal RSS feeds
     -> ScannerAgent (Chroma seen-deal filter + local Qwen structured output)
     -> PlanningAgent (per-deal progress and failure isolation)
     -> EnsembleAgent
-         |- FrontierAgent (Chroma comparables + local Qwen)
+         |- FrontierAgent (Chroma dense + SQLite BM25 + cross-encoder + local Qwen)
          |- SpecialistAgent (local Qwen; fine-tuned Qwen2.5 optional)
          `- NeuralNetworkAgent (local .pth checkpoint)
     -> atomic memory.json persistence
@@ -45,6 +45,14 @@ Build the neural-network checkpoint locally if it is missing:
 .\.venv\Scripts\python.exe .\train_deep_neural_network.py --epochs 5
 ```
 
+Build the persistent BM25 sidecar after creating or replacing the Chroma product
+collection. The application uses dense-only retrieval until this one-time build
+has completed:
+
+```powershell
+.\.venv\Scripts\python.exe .\build_bm25_index.py
+```
+
 ## Run the dashboard
 
 Stop any older dashboard process first so it does not continue serving cached
@@ -72,6 +80,10 @@ All settings are optional:
 | `PRICER_SPECIALIST_MODEL` | `PRICER_QWEN_MODEL` | Model used only by the Ollama fallback |
 | `PRICER_SCANNER_MODEL` | `qwen3.6:latest` | Scanner override |
 | `PRICER_FRONTIER_MODEL` | `qwen3.6:latest` | RAG estimator override |
+| `PRICER_RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder model; set to `off` to disable |
+| `PRICER_BM25_PATH` | `products_bm25.sqlite3` | Persistent lexical index path |
+| `PRICER_MAX_MODEL_SPREAD_RATIO` | `2.0` | Reject ensemble estimates with greater relative disagreement |
+| `PRICER_JUDGE_MODEL` | `qwen3.6:latest` | Optional offline RAG judge model |
 | `OLLAMA_API_BASE` | `http://localhost:11434` | Local Ollama endpoint |
 | `PRICER_ALERT_DIR` | `artifacts` | Local alert output directory |
 
@@ -85,8 +97,39 @@ All settings are optional:
 - Every successfully scanned candidate is persisted in Chroma as selected or rejected.
 - Failed scanner calls remain retryable because their candidates are not marked seen.
 - Winning opportunity history is written atomically to `memory.json`.
+- Alerts require both a discount greater than `$50` and a discount of at least 20%.
 - Logs are HTML-escaped before rendering.
 - Phone and cloud notification calls are disabled.
+
+## AI and RAG concepts
+
+The project currently implements:
+
+- **Local LLM inference:** Qwen through Ollama, with an optional fine-tuned
+  Qwen2.5 specialist adapter.
+- **Embedding and dense retrieval:** MiniLM query embeddings search an
+  800,000-product Chroma HNSW collection using its current L2 distance setting.
+- **BM25 hybrid search:** SQLite FTS5 supplies lexical candidates, and Reciprocal
+  Rank Fusion combines them with Chroma results.
+- **Top-K retrieval and reranking:** dense and BM25 retrieval each return 20
+  candidates; a cross-encoder reranks the fused set and selects five comparables.
+- **RAG context injection:** selected product descriptions and prices are passed
+  to local Qwen as evidence for its estimate.
+- **RAG evaluation:** Precision@K, Recall@K, reciprocal rank, and nDCG utilities
+  support labelled retrieval experiments.
+- **LLM-as-judge:** an optional offline structured judge scores comparable-product
+  relevance; actual prices remain the source of truth for price evaluation.
+- **Guardrails:** structured output, URL and price validation, untrusted-input
+  delimiters, ensemble-disagreement checks, and two-part alert thresholds.
+- **Multi-agent orchestration:** scanner, preprocessing, retrieval, specialist,
+  neural-network, planning, and messaging agents form the end-to-end workflow.
+
+Partially covered or future concepts include human approval, an LLM gateway,
+deployment authentication and authorization, metadata filters, context
+compression, query expansion, multi-query or recursive retrieval, cosine-distance
+evaluation, Self-RAG, Graph RAG, and multimodal RAG. Chunking and chunk overlap
+are intentionally absent because each indexed product is currently a short,
+atomic record rather than a long document.
 
 ## Tests
 
@@ -95,6 +138,7 @@ $env:LITELLM_LOCAL_MODEL_COST_MAP='True'
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-The regression suite covers local model routing and parsing, partial pricing
-failures, progress streaming, durable memory, table conversion, and worker error
-propagation.
+The 26-test regression suite covers hybrid retrieval, BM25 indexing, rank fusion,
+reranking, retrieval metrics, LLM judging, price and alert guardrails, local model
+routing and parsing, partial pricing failures, progress streaming, durable memory,
+table conversion, and worker error propagation.

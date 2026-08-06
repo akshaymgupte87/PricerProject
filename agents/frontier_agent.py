@@ -1,9 +1,18 @@
-import re
 import os
+from pathlib import Path
 from typing import List, Dict
 from litellm import completion
 from sentence_transformers import SentenceTransformer
 from agents.agent import Agent
+from agents.guardrails import extract_single_price
+from agents.retrieval import (
+    CrossEncoderReranker,
+    RetrievalCandidate,
+    RetrievalResult,
+    SQLiteBM25Index,
+    reciprocal_rank_fusion,
+    rerank,
+)
 
 
 def local_ollama_model(value: str) -> str:
@@ -14,6 +23,10 @@ def local_ollama_model(value: str) -> str:
 
 DEFAULT_MODEL = local_ollama_model(os.getenv("PRICER_FRONTIER_MODEL", "qwen3.6:latest"))
 DEFAULT_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+DEFAULT_RERANKER_MODEL = os.getenv(
+    "PRICER_RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+).strip()
+DEFAULT_BM25_PATH = Path(__file__).resolve().parents[1] / "products_bm25.sqlite3"
 
 
 class FrontierAgent(Agent):
@@ -22,7 +35,18 @@ class FrontierAgent(Agent):
 
     MODEL = DEFAULT_MODEL
 
-    def __init__(self, collection, model_name=DEFAULT_MODEL, api_base=DEFAULT_API_BASE):
+    def __init__(
+        self,
+        collection,
+        model_name=DEFAULT_MODEL,
+        api_base=DEFAULT_API_BASE,
+        *,
+        encoder=None,
+        lexical_index=None,
+        candidate_reranker=None,
+        candidate_count: int = 20,
+        result_count: int = 5,
+    ):
         """
         Set up this instance with local Qwen through Ollama, the Chroma datastore,
         and the vector encoding model. No cloud API key is required.
@@ -32,7 +56,18 @@ class FrontierAgent(Agent):
         self.api_base = api_base
         self.log(f"Frontier Agent is using local model {self.MODEL}")
         self.collection = collection
-        self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.model = encoder or SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.lexical_index = lexical_index or SQLiteBM25Index(
+            os.getenv("PRICER_BM25_PATH", str(DEFAULT_BM25_PATH))
+        )
+        if candidate_reranker is not None:
+            self.reranker = candidate_reranker
+        elif DEFAULT_RERANKER_MODEL.lower() in {"", "none", "off"}:
+            self.reranker = None
+        else:
+            self.reranker = CrossEncoderReranker(DEFAULT_RERANKER_MODEL)
+        self.candidate_count = max(candidate_count, result_count)
+        self.result_count = result_count
         self.log("Frontier Agent is ready")
 
     def make_context(self, similars: List[str], prices: List[float]) -> str:
@@ -61,6 +96,36 @@ class FrontierAgent(Agent):
         message += self.make_context(similars, prices)
         return [{"role": "user", "content": message}]
 
+    def retrieve(self, description: str) -> RetrievalResult:
+        """Retrieve, fuse, and rerank comparable products."""
+        vector = self.model.encode([description])
+        dense_results = self.collection.query(
+            query_embeddings=vector.astype(float).tolist(),
+            n_results=self.candidate_count,
+        )
+        ids = dense_results.get("ids", [[]])[0]
+        documents = dense_results.get("documents", [[]])[0]
+        metadatas = dense_results.get("metadatas", [[]])[0]
+        dense = [
+            RetrievalCandidate(
+                id=str(item_id),
+                document=document or "",
+                metadata=metadata or {},
+                dense_rank=rank,
+            )
+            for rank, (item_id, document, metadata) in enumerate(
+                zip(ids, documents, metadatas), start=1
+            )
+        ]
+        lexical = self.lexical_index.search(description, limit=self.candidate_count)
+        fused = reciprocal_rank_fusion([dense, lexical] if lexical else [dense])
+        reranked = rerank(description, fused, self.reranker)
+        return RetrievalResult(
+            candidates=reranked[: self.result_count],
+            used_hybrid=bool(lexical),
+            reranked=self.reranker is not None,
+        )
+
     def find_similars(self, description: str):
         """
         Return a list of items similar to the given one by looking in the Chroma datastore
@@ -68,20 +133,19 @@ class FrontierAgent(Agent):
         self.log(
             "Frontier Agent is performing a RAG search of the Chroma datastore to find 5 similar products"
         )
-        vector = self.model.encode([description])
-        results = self.collection.query(query_embeddings=vector.astype(float).tolist(), n_results=5)
-        documents = results["documents"][0][:]
-        prices = [m["price"] for m in results["metadatas"][0][:]]
-        self.log("Frontier Agent has found similar products")
+        result = self.retrieve(description)
+        documents = [item.document for item in result.candidates]
+        prices = [float(item.metadata["price"]) for item in result.candidates]
+        mode = "hybrid" if result.used_hybrid else "dense fallback"
+        reranking = " with reranking" if result.reranked else ""
+        self.log(f"Frontier Agent found similar products using {mode}{reranking}")
         return documents, prices
 
     def get_price(self, s) -> float:
         """
         A utility that plucks a floating point number out of a string
         """
-        s = s.replace("$", "").replace(",", "")
-        match = re.search(r"[-+]?\d*\.\d+|\d+", s)
-        return float(match.group()) if match else 0.0
+        return extract_single_price(s)
 
     def price(self, description: str) -> float:
         """

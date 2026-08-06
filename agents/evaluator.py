@@ -7,6 +7,9 @@ from itertools import accumulate
 import math
 from tqdm.notebook import tqdm
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Iterable
+
+from agents.retrieval import retrieval_metrics
 
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
@@ -216,3 +219,16 @@ class Tester:
 
 def evaluate(function, data, size=DEFAULT_SIZE, workers=WORKERS):
     Tester(function, data, size=size, workers=workers).run()
+
+
+def aggregate_retrieval_metrics(
+    cases: Iterable[tuple[list[str], set[str]]], *, k: int = 5
+) -> dict[str, float]:
+    """Average retrieval metrics across labelled (retrieved, relevant) cases."""
+    rows = [retrieval_metrics(retrieved, relevant, k=k) for retrieved, relevant in cases]
+    if not rows:
+        return {}
+    return {
+        metric: sum(row[metric] for row in rows) / len(rows)
+        for metric in rows[0]
+    }

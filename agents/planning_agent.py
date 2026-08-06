@@ -14,6 +14,7 @@ class PlanningAgent(Agent):
     name = "Planning Agent"
     color = Agent.GREEN
     DEAL_THRESHOLD = 50
+    MIN_DISCOUNT_PERCENT = 0.20
 
     def __init__(self, collection, seen_store: DealSeenStore | None = None):
         """
@@ -84,8 +85,13 @@ class PlanningAgent(Agent):
             opportunities.sort(key=lambda opp: opp.discount, reverse=True)
             best = opportunities[0]
             self.log(f"Planning Agent has identified the best deal has discount ${best.discount:.2f}")
-            if best.discount > self.DEAL_THRESHOLD:
+            discount_percent = best.discount / best.estimate if best.estimate > 0 else 0
+            qualifies = (
+                best.discount > self.DEAL_THRESHOLD
+                and discount_percent >= self.MIN_DISCOUNT_PERCENT
+            )
+            if qualifies:
                 self.messenger.alert(best)
             self.log("Planning Agent has completed a run")
-            return best if best.discount > self.DEAL_THRESHOLD else None
+            return best if qualifies else None
         return None

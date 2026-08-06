@@ -1,4 +1,7 @@
+import os
+
 from agents.agent import Agent
+from agents.guardrails import PriceGuardrailError, relative_spread, validate_price
 from agents.specialist_agent import SpecialistAgent
 from agents.frontier_agent import FrontierAgent
 from agents.neural_network_agent import NeuralNetworkAgent
@@ -8,6 +11,7 @@ from agents.preprocessor import Preprocessor
 class EnsembleAgent(Agent):
     name = "Ensemble Agent"
     color = Agent.YELLOW
+    MAX_RELATIVE_SPREAD = float(os.getenv("PRICER_MAX_MODEL_SPREAD_RATIO", "2.0"))
 
     def __init__(self, collection):
         """
@@ -32,9 +36,18 @@ class EnsembleAgent(Agent):
         self.log("Running Ensemble Agent - preprocessing text")
         rewrite = self.preprocessor.preprocess(description)
         self.log(f"Pre-processed text using {self.preprocessor.model_name}")
-        specialist = self.specialist.price(rewrite)
-        frontier = self.frontier.price(rewrite)
-        neural_network = self.neural_network.price(rewrite)
-        combined = frontier * 0.8 + specialist * 0.1 + neural_network * 0.1
+        specialist = validate_price(self.specialist.price(rewrite))
+        frontier = validate_price(self.frontier.price(rewrite))
+        neural_network = validate_price(self.neural_network.price(rewrite))
+        estimates = [specialist, frontier, neural_network]
+        spread = relative_spread(estimates)
+        if spread > self.MAX_RELATIVE_SPREAD:
+            raise PriceGuardrailError(
+                "pricing models disagree too strongly "
+                f"(relative spread {spread:.2f} > {self.MAX_RELATIVE_SPREAD:.2f})"
+            )
+        combined = validate_price(
+            frontier * 0.8 + specialist * 0.1 + neural_network * 0.1
+        )
         self.log(f"Ensemble Agent complete - returning ${combined:.2f}")
         return combined

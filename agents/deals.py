@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Self
 from bs4 import BeautifulSoup
 import re
@@ -6,6 +6,9 @@ import feedparser
 from tqdm import tqdm
 import requests
 import time
+from urllib.parse import urlparse
+
+from agents.guardrails import validate_price
 
 feeds = [
     "https://www.dealnews.com/c142/Electronics/?rss=1",
@@ -111,6 +114,27 @@ class Deal(BaseModel):
         description="The actual price of this product, as advertised in the deal. Be sure to give the actual price; for example, if a deal is described as $100 off the usual $300 price, you should respond with $200"
     )
     url: str = Field(description="The URL of the deal, as provided in the input")
+
+    @field_validator("product_description")
+    @classmethod
+    def validate_description(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("product description cannot be empty")
+        return cleaned[:2_000]
+
+    @field_validator("price")
+    @classmethod
+    def validate_deal_price(cls, value: float) -> float:
+        return validate_price(value)
+
+    @field_validator("url")
+    @classmethod
+    def validate_deal_url(cls, value: str) -> str:
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("deal URL must be an absolute HTTP(S) URL")
+        return value
 
 
 class DealSelection(BaseModel):

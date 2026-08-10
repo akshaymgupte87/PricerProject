@@ -7,6 +7,9 @@ from itertools import accumulate
 import math
 from tqdm.notebook import tqdm
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Iterable
+
+from agents.retrieval import retrieval_metrics
 
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
@@ -56,11 +59,29 @@ class Tester:
         datapoint = self.data[i]
         value = self.predictor(datapoint)
         guess = self.post_process(value)
-        truth = datapoint.price
+        truth = self.truth_for(datapoint)
         error = abs(guess - truth)
         color = self.color_for(error, truth)
-        title = datapoint.title if len(datapoint.title) <= 40 else datapoint.title[:40] + "..."
+        title = self.title_for(datapoint)
         return title, guess, truth, error, color
+
+    @staticmethod
+    def truth_for(datapoint) -> float:
+        """Read ground truth from domain objects or legacy prompt/completion rows."""
+        if hasattr(datapoint, "price"):
+            return float(datapoint.price)
+        return float(datapoint["completion"])
+
+    @staticmethod
+    def title_for(datapoint) -> str:
+        """Produce a compact label for domain objects or legacy notebook rows."""
+        if hasattr(datapoint, "title"):
+            title = str(datapoint.title)
+        else:
+            prompt = str(datapoint.get("prompt", "Untitled item"))
+            pieces = prompt.split("Title: ", 1)
+            title = pieces[1].split("\n", 1)[0] if len(pieces) > 1 else pieces[0]
+        return title if len(title) <= 40 else title[:40] + "..."
 
     def chart(self, title):
         df = pd.DataFrame(
@@ -216,3 +237,16 @@ class Tester:
 
 def evaluate(function, data, size=DEFAULT_SIZE, workers=WORKERS):
     Tester(function, data, size=size, workers=workers).run()
+
+
+def aggregate_retrieval_metrics(
+    cases: Iterable[tuple[list[str], set[str]]], *, k: int = 5
+) -> dict[str, float]:
+    """Average retrieval metrics across labelled (retrieved, relevant) cases."""
+    rows = [retrieval_metrics(retrieved, relevant, k=k) for retrieved, relevant in cases]
+    if not rows:
+        return {}
+    return {
+        metric: sum(row[metric] for row in rows) / len(rows)
+        for metric in rows[0]
+    }

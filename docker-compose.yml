@@ -1,0 +1,13 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./products_vectorstore:/app/products_vectorstore:ro
+      - ./products_bm25.sqlite3:/app/products_bm25.sqlite3:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

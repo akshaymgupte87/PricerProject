@@ -1,0 +1,14 @@
+.git
+.idea
+.venv
+.hf-cache
+__pycache__
+*.pyc
+artifacts
+full
+jsonl
+notebooks
+wandb
+price-*-lite
+products_vectorstore
+products_bm25.sqlite3

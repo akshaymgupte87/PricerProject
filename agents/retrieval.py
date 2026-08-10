@@ -13,11 +13,40 @@ from typing import Any, Iterable, Protocol, Sequence
 
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+(?:[._-][a-z0-9]+)*", re.IGNORECASE)
+QUERY_NOISE = {"a", "an", "and", "for", "of", "the", "this", "with"}
 
 
 def tokenize(text: str) -> list[str]:
     """Return FTS-safe terms while preserving product-model tokens."""
     return [match.group(0).lower() for match in TOKEN_PATTERN.finditer(text or "")]
+
+
+def expand_product_query(query: str) -> list[str]:
+    """Create conservative lexical variants without inventing product facts."""
+    original = " ".join((query or "").split())
+    terms = tokenize(original)
+    compact = " ".join(term for term in terms if term not in QUERY_NOISE)
+    model_tokens: list[str] = []
+    for index, term in enumerate(terms):
+        if any(character.isdigit() for character in term):
+            if index and terms[index - 1] not in QUERY_NOISE:
+                model_tokens.append(terms[index - 1])
+            model_tokens.append(term)
+    model_terms = " ".join(dict.fromkeys(model_tokens))
+    return list(dict.fromkeys(value for value in (original, compact, model_terms) if value))
+
+
+def metadata_matches(metadata: dict[str, Any], filters: dict[str, Any] | None) -> bool:
+    if not filters:
+        return True
+    for key, expected in filters.items():
+        actual = metadata.get(key)
+        if isinstance(expected, (list, tuple, set)):
+            if actual not in expected:
+                return False
+        elif str(actual).casefold() != str(expected).casefold():
+            return False
+    return True
 
 
 @dataclass
@@ -127,7 +156,12 @@ class SQLiteBM25Index:
         except sqlite3.Error:
             return False
 
-    def search(self, query: str, limit: int = 20) -> list[RetrievalCandidate]:
+    def search(
+        self,
+        query: str,
+        limit: int = 20,
+        metadata_filter: dict[str, Any] | None = None,
+    ) -> list[RetrievalCandidate]:
         terms = list(dict.fromkeys(tokenize(query)))
         if not terms or limit <= 0 or not self.ready:
             return []
@@ -141,9 +175,9 @@ class SQLiteBM25Index:
                 ORDER BY score
                 LIMIT ?
                 """,
-                (match_query, limit),
+                (match_query, limit * 5 if metadata_filter else limit),
             ).fetchall()
-        return [
+        candidates = [
             RetrievalCandidate(
                 id=row[0],
                 document=row[1],
@@ -152,6 +186,10 @@ class SQLiteBM25Index:
             )
             for rank, row in enumerate(rows, start=1)
         ]
+        filtered = [item for item in candidates if metadata_matches(item.metadata, metadata_filter)]
+        for rank, item in enumerate(filtered, start=1):
+            item.lexical_rank = rank
+        return filtered[:limit]
 
     def rebuild(self, collection, *, batch_size: int = 5_000) -> int:
         """Rebuild the sidecar from Chroma in bounded batches."""

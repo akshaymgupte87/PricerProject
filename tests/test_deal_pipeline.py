@@ -209,7 +209,7 @@ class PlanningProgressTests(unittest.TestCase):
 
         self.assertEqual([len(snapshot) for snapshot in snapshots], [1, 2])
         self.assertEqual(result.deal.product_description, "three")
-        planner.messenger.alert.assert_called_once_with(result)
+        planner.messenger.alert.assert_not_called()
 
 
 class FrameworkPersistenceTests(unittest.TestCase):
@@ -246,6 +246,29 @@ class FrameworkPersistenceTests(unittest.TestCase):
         self.assertTrue(any(len(snapshot) == 2 for snapshot in snapshots))
         self.assertEqual(len(persisted), 2)
         self.assertFalse(memory_path.with_suffix(".json.tmp").exists())
+
+    def test_approval_publishes_once_and_rejection_never_publishes(self):
+        approved = opportunity("approved", 100, 180)
+        rejected = opportunity("rejected", 90, 170)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            framework = self.make_framework(Path(temp_dir) / "memory.json")
+            framework.store.upsert_opportunity(approved)
+            framework.store.upsert_opportunity(rejected)
+
+            with patch("deal_agent_framework.MessagingAgent") as messaging:
+                framework.submit_feedback(approved.deal.url, "approved")
+                framework.submit_feedback(approved.deal.url, "approved")
+                framework.submit_feedback(rejected.deal.url, "rejected")
+
+            messaging.return_value.alert.assert_called_once()
+            statuses = {
+                item.deal.url: item.status
+                for item in framework.store.list_opportunities()
+            }
+
+        self.assertEqual(statuses[approved.deal.url], "approved")
+        self.assertEqual(statuses[rejected.deal.url], "rejected")
 
 
 class UiWorkerTests(unittest.TestCase):

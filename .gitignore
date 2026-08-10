@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# PricerProject local artifacts
+artifacts/*.pth
+artifacts/deal_alerts.jsonl
+artifacts/deal_alerts.html
+artifacts/*.sqlite3*
+artifacts/*.log
+*.pth
+.venv/
+.hf-cache/
+.ipynb_checkpoints/
+products_vectorstore/
+products_bm25.sqlite3*
+wandb/
+.idea/workspace.xml

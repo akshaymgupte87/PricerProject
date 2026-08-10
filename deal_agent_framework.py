@@ -10,7 +10,10 @@ from dotenv import load_dotenv
 import chromadb
 from agents.planning_agent import PlanningAgent
 from agents.deals import Opportunity
-from agents.deal_seen_store import DealSeenStore
+from agents.deal_seen_store import DealSeenStore, canonicalize_url
+from agents.messaging_agent import MessagingAgent
+from pricer.intelligence_store import IntelligenceStore
+from pricer.observability import Observability
 from sklearn.manifold import TSNE
 import numpy as np
 
@@ -57,15 +60,21 @@ class DealAgentFramework:
     PROJECT_ROOT = Path(__file__).resolve().parent
     DB = PROJECT_ROOT / "products_vectorstore"
     MEMORY_FILENAME = PROJECT_ROOT / "memory.json"
+    INTELLIGENCE_FILENAME = PROJECT_ROOT / "artifacts" / "pricer_intelligence.sqlite3"
 
     def __init__(
         self,
         db_path: str | Path | None = None,
         memory_path: str | Path | None = None,
+        intelligence_path: str | Path | None = None,
     ):
         init_logging()
         self.db_path = Path(db_path or self.DB)
         self.memory_path = Path(memory_path or self.MEMORY_FILENAME)
+        if intelligence_path is None and memory_path is not None:
+            intelligence_path = self.memory_path.parent / "pricer_intelligence.sqlite3"
+        self.store = IntelligenceStore(intelligence_path or self.INTELLIGENCE_FILENAME)
+        self.observability = Observability(self.store)
         client = chromadb.PersistentClient(path=str(self.db_path))
         self.memory = self.read_memory()
         self.collection = client.get_or_create_collection("products")
@@ -114,7 +123,8 @@ class DealAgentFramework:
         return list(merged.values())
 
     def display_opportunities(self) -> List[Opportunity]:
-        return self._merge_opportunities(self.memory, self.current_run)
+        persisted = self.store.list_opportunities()
+        return self._merge_opportunities(persisted, self.memory, self.current_run)
 
     def run(
         self,
@@ -133,6 +143,7 @@ class DealAgentFramework:
                 _opportunity: Opportunity,
                 current: List[Opportunity],
             ) -> None:
+                self.store.upsert_opportunity(_opportunity)
                 self.current_run = current
                 if on_progress:
                     on_progress(self.display_opportunities())
@@ -147,13 +158,44 @@ class DealAgentFramework:
             ):
                 self.memory.append(result)
                 self.write_memory()
-
             final = self.display_opportunities()
             if on_progress:
                 on_progress(final)
             return final
         finally:
             self._run_lock.release()
+
+    def submit_feedback(
+        self,
+        url: str,
+        decision: str,
+        *,
+        corrected_price: float | None = None,
+        reason: str = "",
+    ) -> Opportunity:
+        canonical_url = canonicalize_url(url)
+        existing = next(
+            (
+                opportunity
+                for opportunity in self.store.list_opportunities()
+                if canonicalize_url(opportunity.deal.url) == canonical_url
+            ),
+            None,
+        )
+        was_approved = existing is not None and existing.status == "approved"
+        updated = self.store.record_feedback(
+            url, decision, corrected_price=corrected_price, reason=reason
+        )
+        for opportunity in [*self.memory, *self.current_run]:
+            if canonicalize_url(opportunity.deal.url) == canonical_url:
+                opportunity.status = decision
+        self.write_memory()
+        if decision == "approved" and not was_approved:
+            MessagingAgent().alert(updated)
+        return updated
+
+    def price_history(self, url: str) -> list[dict]:
+        return self.store.price_history(url)
 
     @classmethod
     def get_plot_data(cls, max_datapoints=2000):

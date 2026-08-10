@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from collections.abc import Callable
 from typing import Optional, List
 from agents.agent import Agent
@@ -33,10 +34,26 @@ class PlanningAgent(Agent):
         :returns: an opportunity including the discount
         """
         self.log("Planning Agent is pricing up a potential deal")
-        estimate = self.ensemble.price(deal.product_description)
+        if isinstance(self.ensemble, EnsembleAgent):
+            detailed = self.ensemble.estimate(deal.product_description)
+            estimate = detailed.value
+        else:
+            detailed = None
+            estimate = self.ensemble.price(deal.product_description)
         discount = estimate - deal.price
         self.log(f"Planning Agent has processed a deal with discount ${discount:.2f}")
-        return Opportunity(deal=deal, estimate=estimate, discount=discount)
+        return Opportunity(
+            deal=deal,
+            estimate=estimate,
+            discount=discount,
+            model_estimates=detailed.model_estimates if detailed else {},
+            confidence=detailed.confidence if detailed else 0.0,
+            confidence_low=detailed.confidence_low if detailed else None,
+            confidence_high=detailed.confidence_high if detailed else None,
+            evidence=detailed.evidence if detailed else [],
+            explanation=detailed.explanation if detailed else "",
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
 
     def plan(
         self,
@@ -47,7 +64,7 @@ class PlanningAgent(Agent):
         Run the full workflow:
         1. Use the ScannerAgent to find deals from RSS feeds
         2. Use the EnsembleAgent to estimate them
-        3. Use the MessagingAgent to send a notification of deals
+        3. Return qualifying deals as pending for human review
         :param memory: a list of URLs that have been surfaced in the past
         :return: an Opportunity if one was surfaced, otherwise None
         """
@@ -91,7 +108,9 @@ class PlanningAgent(Agent):
                 and discount_percent >= self.MIN_DISCOUNT_PERCENT
             )
             if qualifies:
-                self.messenger.alert(best)
+                self.log(
+                    "Planning Agent queued the qualifying deal for human approval"
+                )
             self.log("Planning Agent has completed a run")
             return best if qualifies else None
         return None

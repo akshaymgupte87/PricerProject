@@ -12,6 +12,7 @@ from agents.retrieval import (
     SQLiteBM25Index,
     reciprocal_rank_fusion,
     rerank,
+    expand_product_query,
 )
 
 
@@ -68,6 +69,7 @@ class FrontierAgent(Agent):
             self.reranker = CrossEncoderReranker(DEFAULT_RERANKER_MODEL)
         self.candidate_count = max(candidate_count, result_count)
         self.result_count = result_count
+        self.last_retrieval: RetrievalResult | None = None
         self.log("Frontier Agent is ready")
 
     def make_context(self, similars: List[str], prices: List[float]) -> str:
@@ -96,35 +98,55 @@ class FrontierAgent(Agent):
         message += self.make_context(similars, prices)
         return [{"role": "user", "content": message}]
 
-    def retrieve(self, description: str) -> RetrievalResult:
+    def retrieve(
+        self,
+        description: str,
+        *,
+        metadata_filter: dict | None = None,
+        query_variants: List[str] | None = None,
+    ) -> RetrievalResult:
         """Retrieve, fuse, and rerank comparable products."""
-        vector = self.model.encode([description])
-        dense_results = self.collection.query(
-            query_embeddings=vector.astype(float).tolist(),
-            n_results=self.candidate_count,
-        )
-        ids = dense_results.get("ids", [[]])[0]
-        documents = dense_results.get("documents", [[]])[0]
-        metadatas = dense_results.get("metadatas", [[]])[0]
-        dense = [
-            RetrievalCandidate(
-                id=str(item_id),
-                document=document or "",
-                metadata=metadata or {},
-                dense_rank=rank,
+        variants = query_variants or expand_product_query(description)
+        rankings = []
+        for variant in variants:
+            vector = self.model.encode([variant])
+            query_args = {
+                "query_embeddings": vector.astype(float).tolist(),
+                "n_results": self.candidate_count,
+            }
+            if metadata_filter:
+                query_args["where"] = metadata_filter
+            dense_results = self.collection.query(**query_args)
+            ids = dense_results.get("ids", [[]])[0]
+            documents = dense_results.get("documents", [[]])[0]
+            metadatas = dense_results.get("metadatas", [[]])[0]
+            rankings.append([
+                RetrievalCandidate(
+                    id=str(item_id),
+                    document=document or "",
+                    metadata=metadata or {},
+                    dense_rank=rank,
+                )
+                for rank, (item_id, document, metadata) in enumerate(
+                    zip(ids, documents, metadatas), start=1
+                )
+            ])
+            lexical = self.lexical_index.search(
+                variant,
+                limit=self.candidate_count,
+                metadata_filter=metadata_filter,
             )
-            for rank, (item_id, document, metadata) in enumerate(
-                zip(ids, documents, metadatas), start=1
-            )
-        ]
-        lexical = self.lexical_index.search(description, limit=self.candidate_count)
-        fused = reciprocal_rank_fusion([dense, lexical] if lexical else [dense])
+            if lexical:
+                rankings.append(lexical)
+        fused = reciprocal_rank_fusion(rankings)
         reranked = rerank(description, fused, self.reranker)
-        return RetrievalResult(
+        result = RetrievalResult(
             candidates=reranked[: self.result_count],
-            used_hybrid=bool(lexical),
+            used_hybrid=any(item.lexical_rank is not None for item in fused),
             reranked=self.reranker is not None,
         )
+        self.last_retrieval = result
+        return result
 
     def find_similars(self, description: str):
         """
@@ -140,6 +162,23 @@ class FrontierAgent(Agent):
         reranking = " with reranking" if result.reranked else ""
         self.log(f"Frontier Agent found similar products using {mode}{reranking}")
         return documents, prices
+
+    def evidence(self) -> list[dict]:
+        """Return serializable citations for the most recent pricing request."""
+        if not self.last_retrieval:
+            return []
+        return [
+            {
+                "id": item.id,
+                "description": item.document,
+                "price": float(item.metadata.get("price", 0)),
+                "category": item.metadata.get("category"),
+                "score": item.reranker_score
+                if item.reranker_score is not None
+                else item.fusion_score,
+            }
+            for item in self.last_retrieval.candidates
+        ]
 
     def get_price(self, s) -> float:
         """

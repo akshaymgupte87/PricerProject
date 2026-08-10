@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Dict, Self
+from typing import List, Dict, Self, Literal
 from bs4 import BeautifulSoup
 import re
 import feedparser
@@ -114,6 +114,10 @@ class Deal(BaseModel):
         description="The actual price of this product, as advertised in the deal. Be sure to give the actual price; for example, if a deal is described as $100 off the usual $300 price, you should respond with $200"
     )
     url: str = Field(description="The URL of the deal, as provided in the input")
+    category: str | None = Field(default=None, description="Optional product category")
+    brand: str | None = Field(default=None, description="Optional product brand")
+    condition: str | None = Field(default=None, description="New, used, or refurbished")
+    image_url: str | None = Field(default=None, description="Optional product image URL")
 
     @field_validator("product_description")
     @classmethod
@@ -156,3 +160,11 @@ class Opportunity(BaseModel):
     deal: Deal
     estimate: float
     discount: float
+    model_estimates: Dict[str, float] = Field(default_factory=dict)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    confidence_low: float | None = None
+    confidence_high: float | None = None
+    evidence: List[Dict] = Field(default_factory=list)
+    explanation: str = ""
+    status: Literal["pending", "approved", "rejected"] = "pending"
+    created_at: str | None = None

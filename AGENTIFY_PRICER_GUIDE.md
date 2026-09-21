@@ -69,8 +69,8 @@ These models are not interchangeable. The LoRA adapter was trained for Qwen2.5 3
 | File | Purpose |
 |---|---|
 | `notebooks/PricerProject.ipynb` | Main data engineering and model experimentation notebook. It covers ingestion, sampling, local Qwen summarization, baselines, evaluation, and local Qwen price estimation. |
-| `NEW_Week_7_Day_1_qlora_intro.ipynb` | Demonstrates unquantized, 8-bit, and 4-bit loading and examines LoRA concepts using Qwen2.5 3B. |
-| `NEW_Week_7_Day_3_TRAINING.ipynb` | Performs the actual QLoRA supervised fine-tuning run and evaluates the resulting adapter. |
+| `Qlora_intro.ipynb` | Demonstrates unquantized, 8-bit, and 4-bit loading and examines LoRA concepts using Qwen2.5 3B. |
+| `Qlora_Training.ipynb` | Performs the actual QLoRA supervised fine-tuning run and evaluates the resulting adapter. |
 | `notebooks/Agentify_Pricer.ipynb` | Incrementally wraps preprocessing and specialist pricing in agents and verifies local execution. |
 | `sample.ipynb` | Minimal sample notebook unrelated to the core pipeline. |
 
@@ -432,7 +432,7 @@ Threaded evaluation is suitable for remote or Ollama calls when the backend can 
 
 ## 14. Quantization and LoRA exploration
 
-`NEW_Week_7_Day_1_qlora_intro.ipynb` introduces model-efficient fine-tuning concepts with:
+`Qlora_intro.ipynb` introduces model-efficient fine-tuning concepts with:
 
 ```text
 Qwen/Qwen2.5-3B-Instruct
@@ -450,7 +450,7 @@ The notebook emphasizes restarting the runtime between large model variants so p
 
 ## 15. Actual QLoRA fine-tuning run
 
-`NEW_Week_7_Day_3_TRAINING.ipynb` performs supervised fine-tuning with TRL's `SFTTrainer`.
+`Qlora_Training.ipynb` performs supervised fine-tuning with TRL's `SFTTrainer`.
 
 ### Lite-run configuration
 

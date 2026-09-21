@@ -544,13 +544,20 @@ class App:
                 with gr.Column(scale=1, min_width=360):
                     logs = gr.HTML(html_for([]), elem_classes=["section-card"])
                 with gr.Column(scale=2, min_width=700):
-                    plot = gr.Plot(value=get_plot(), show_label=False, elem_classes=["section-card"])
+                    plot = gr.Plot(
+                        value=get_initial_plot(),
+                        show_label=False,
+                        elem_classes=["section-card"],
+                    )
 
             ui.load(
                 run_with_logging,
                 inputs=[log_data],
                 outputs=[log_data, logs, opportunities_dataframe, status],
             )
+            # Build the expensive t-SNE visualization after Gradio starts so a
+            # slow or resource-constrained plot cannot block the dashboard port.
+            ui.load(get_plot, outputs=[plot])
 
             run_button.click(
                 run_with_logging,

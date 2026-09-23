@@ -1,0 +1,44 @@
+name: Deploy API
+
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: 'Published image digest from CI summary (sha256:...)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: pricer-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && vars.PRICER_DEPLOY_ENABLED == 'true'
+    environment: production
+    runs-on: [self-hosted, Linux, X64, pricer-deploy]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Deploy published image with health check and rollback
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ inputs.digest }}
+          PRICER_DEPLOY_DIR: ${{ vars.PRICER_DEPLOY_DIR }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo 'Invalid digest'; exit 1; }
+          export PRICER_IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}@$IMAGE_DIGEST"
+          export DOCKER_CONFIG
+          DOCKER_CONFIG=$(mktemp -d)
+          trap 'rm -rf -- "$DOCKER_CONFIG"' EXIT
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          bash scripts/deploy.sh
+          echo "Deployed \`$PRICER_IMAGE\`" >> "$GITHUB_STEP_SUMMARY"

@@ -503,64 +503,6 @@ $env:LITELLM_LOCAL_MODEL_COST_MAP='True'
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-## GitHub Actions CI/CD
-
-[CI and container delivery](.github/workflows/ci.yml) runs on pull requests,
-pushes to `main`, and manual dispatch. It builds the Python 3.14 API image using
-`uv sync --locked`, runs the unit tests inside that image, and checks API startup
-and rejection of unauthenticated requests. Dependency layers use the GitHub
-Actions build cache. Local `.env` files and generated assets are excluded from
-the build context.
-
-After verification, a separate job publishes `main` builds to
-`ghcr.io/akshaymgupte87/pricerproject` with `latest` and `sha-<full-commit>` tags.
-The run summary records the immutable digest to use for deployment. Pull requests
-cannot publish images. Publishing uses the built-in `GITHUB_TOKEN`; no Docker Hub
-account or personal registry token is needed. The repository must permit Actions
-and the package must grant this repository write access if it already exists.
-See [GitHub's image publishing guide](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
-and [uv lockfile behavior](https://docs.astral.sh/uv/concepts/projects/sync/).
-
-### Optional deployment to a prepared Linux host
-
-[Deploy API](.github/workflows/deploy.yml) is a separate, manually triggered
-workflow. It stays disabled until repository variable `PRICER_DEPLOY_ENABLED`
-equals `true`. It only runs from `main`, uses the `production` GitHub environment,
-and deploys a published digest; it does not build or train models on the host.
-
-1. Prepare a trusted Linux x64 host with Docker Engine, Docker Compose v2
-   supporting `up --wait`, and a GitHub Actions runner labeled `pricer-deploy`.
-   Give the runner permission to use Docker. Do not run pull-request jobs on
-   this host. Hosted Ubuntu runners handle CI.
-2. Create a data directory such as `/srv/pricer`, outside the runner checkout.
-   Place `.env`, `artifacts/deep_neural_network.pth`, `products_vectorstore/`, and
-   `products_bm25.sqlite3` there. Provision the populated assets using the setup
-   guides above; grant container UID 10001 write access to `artifacts/` and the
-   Chroma directory. Back up persistent data separately.
-3. Configure that `.env` from `.env.example`, set a real `PRICER_API_KEY`, and
-   configure Ollama so the container can reach the host and its installed model.
-   The default deployment uses the Ollama specialist. A fine-tuned GPU backend
-   needs additional GPU and adapter mounts before use.
-4. Set repository variables `PRICER_DEPLOY_DIR=/srv/pricer` and
-   `PRICER_DEPLOY_ENABLED=true`. Create the `production` environment and restrict
-   deployment to `main`; configure required reviewers if desired and supported
-   by your GitHub plan. Ensure the repository can read its GHCR package.
-5. After CI passes, copy the `sha256:...` digest from the publish job summary.
-   In Actions, run **Deploy API** from `main` with that digest.
-
-The production Compose file binds the API to host loopback on port 8000. Use a
-configured HTTPS reverse proxy for remote access. Deployment waits for `/health`
-and restores the previous image if startup fails. A first failed deployment is
-stopped. To roll back manually, dispatch the workflow with an earlier published
-digest. Image rollback does not undo database changes; take a backup before
-deployments that change persistent data formats.
-
-The health endpoint checks API liveness, not model readiness. CI does not download
-models, train adapters, or run live inference. Verify a pricing request on the
-prepared host after initial setup. The container includes the project's full ML
-dependencies, so cold builds can be large and slow; runner disk capacity may need
-adjustment. Configure `Test and verify container` as a required branch check.
-
 ## Scope, evidence, and further reading
 
 The repository contains implemented research workflows, pricing components, and

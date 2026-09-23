@@ -1,11 +1,5 @@
 .git
 .idea
-.env
-.env.*
-!.env.example
-.uv-cache
-.pytest_cache
-.ruff_cache
 .venv
 .hf-cache
 __pycache__
@@ -18,6 +12,3 @@ wandb
 price-*-lite
 products_vectorstore
 products_bm25.sqlite3
-*.log
-human_in.csv
-human_out.csv

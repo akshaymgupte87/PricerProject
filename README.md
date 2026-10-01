@@ -42,11 +42,18 @@ OLLAMA_API_BASE=http://localhost:11434
 
 To use a vLLM OpenAI-compatible server instead, set `PRICER_LLM_PROVIDER=vllm` and point `VLLM_API_BASE` (or `PRICER_LLM_API_BASE`) at its `/v1` endpoint. The same model variables are used; vLLM model names are sent through LiteLLM's OpenAI-compatible provider.
 
-For local vLLM, start Qwen from Linux or WSL2 (vLLM does not support native Windows):
+For local vLLM, start Qwen from Linux or WSL2 (vLLM does not support native Windows). In the WSL terminal, set the compatibility overrides before launching:
 
 ```sh
+export FLASHINFER_DISABLE_VERSION_CHECK=1
+export VLLM_WSL2_ENABLE_PIN_MEMORY=1
+export VLLM_USE_V2_MODEL_RUNNER=0
+export VLLM_VERSION=v0
+
 vllm serve Qwen/Qwen2.5-3B-Instruct --host 0.0.0.0 --port 8001 --api-key local-dev-key
 ```
+
+Add those `export` lines to `~/.bashrc` if they should apply to every WSL session. These are WSL shell settings; they do not belong in the project's `.env` file.
 
 Then configure:
 

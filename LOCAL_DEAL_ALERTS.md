@@ -5,7 +5,7 @@ It does not call Pushover, Claude, OpenAI, or another remote notification/model 
 
 ## End-to-end application flow
 
-The active application starts in `price_is_right.py`. The final notebook cell runs
+The active application starts in `src/pricer/interfaces/dashboard.py`. The final notebook cell runs
 that Python file; the older Gradio cells in the notebook are demonstrations and are
 not part of the active dashboard flow.
 
@@ -143,7 +143,7 @@ the page accessible only from this computer. Stop the server with `Ctrl+C`.
 ## Use it directly in the notebook
 
 ```python
-from agents.messaging_agent import MessagingAgent
+from pricer.agents.messaging_agent import MessagingAgent
 
 messenger = MessagingAgent()
 messenger.notify(
@@ -193,7 +193,7 @@ Rebuild the BM25 sidecar after replacing or substantially updating the Chroma
 product collection:
 
 ```powershell
-.\.venv\Scripts\python.exe .\build_bm25_index.py
+.\.venv\Scripts\python.exe -m pricer.jobs.build_bm25
 ```
 
 ## Change the output folder (optional)

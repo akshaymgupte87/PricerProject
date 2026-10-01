@@ -4,9 +4,12 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    environment:
+      PRICER_HOME: /app
+      PRICER_MEMORY_PATH: artifacts/memory.json
     volumes:
       - ./artifacts:/app/artifacts
-      - ./products_vectorstore:/app/products_vectorstore:ro
+      - ./products_vectorstore:/app/products_vectorstore
       - ./products_bm25.sqlite3:/app/products_bm25.sqlite3:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"

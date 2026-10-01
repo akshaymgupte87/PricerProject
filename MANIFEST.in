@@ -1,0 +1,8 @@
+include README.md uv.lock .env.example
+recursive-include docs *.md
+recursive-include tests *.py
+prune .uv-cache
+prune .hf-cache
+prune artifacts
+prune notebooks
+prune products_vectorstore

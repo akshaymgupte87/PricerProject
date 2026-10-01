@@ -15,8 +15,8 @@ import json
 from dotenv import load_dotenv
 from huggingface_hub import login
 from openai import OpenAI
-from pricer.items  import Item
-from pricer.evaluator import evaluate
+from pricer.data.items  import Item
+from pricer.evaluation.evaluator import evaluate
 # environment
 
 LITE_MODE = False

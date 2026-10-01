@@ -9,14 +9,14 @@ from unittest.mock import Mock, patch
 
 import chromadb
 
-from agents.deal_seen_store import DealSeenStore, canonicalize_url
-from agents.deals import Deal, DealSelection, Opportunity
-from agents.planning_agent import PlanningAgent
-from agents.scanner_agent import ScannerAgent
-from agents.specialist_agent import SpecialistAgent
-from deal_agent_framework import DealAgentFramework
-from pricer_ephemeral import build_prompt, price as fine_tuned_price
-from price_is_right import run_framework_worker, table_for
+from pricer.agents.deal_seen_store import DealSeenStore, canonicalize_url
+from pricer.agents.deals import Deal, DealSelection, Opportunity
+from pricer.agents.planning_agent import PlanningAgent
+from pricer.agents.scanner_agent import ScannerAgent
+from pricer.agents.specialist_agent import SpecialistAgent
+from pricer.application.framework import DealAgentFramework
+from pricer.inference.finetuned import build_prompt, price as fine_tuned_price
+from pricer.interfaces.dashboard import run_framework_worker, table_for
 
 
 def opportunity(name: str, price: float, estimate: float) -> Opportunity:
@@ -87,8 +87,8 @@ class ScannerDeduplicationTests(unittest.TestCase):
         rejected = scraped_deal("https://example.com/rejected", "Rejected")
         agent = ScannerAgent(seen_store=store)
 
-        with patch("agents.scanner_agent.ScrapedDeal.fetch", return_value=[selected, rejected]), patch(
-            "agents.scanner_agent.completion",
+        with patch("pricer.agents.scanner_agent.ScrapedDeal.fetch", return_value=[selected, rejected]), patch(
+            "pricer.agents.scanner_agent.completion",
             return_value=scanner_response(selected.url),
         ) as completion:
             first = agent.scan(memory=[])
@@ -106,8 +106,8 @@ class ScannerDeduplicationTests(unittest.TestCase):
         candidate = scraped_deal("https://example.com/retry", "Retry")
         agent = ScannerAgent(seen_store=store)
 
-        with patch("agents.scanner_agent.ScrapedDeal.fetch", return_value=[candidate]), patch(
-            "agents.scanner_agent.completion",
+        with patch("pricer.agents.scanner_agent.ScrapedDeal.fetch", return_value=[candidate]), patch(
+            "pricer.agents.scanner_agent.completion",
             side_effect=RuntimeError("temporary model failure"),
         ):
             with self.assertRaisesRegex(RuntimeError, "temporary model failure"):
@@ -115,8 +115,8 @@ class ScannerDeduplicationTests(unittest.TestCase):
 
         self.assertEqual(collection.count(), 0)
 
-        with patch("agents.scanner_agent.ScrapedDeal.fetch", return_value=[candidate]), patch(
-            "agents.scanner_agent.completion",
+        with patch("pricer.agents.scanner_agent.ScrapedDeal.fetch", return_value=[candidate]), patch(
+            "pricer.agents.scanner_agent.completion",
             return_value=scanner_response(candidate.url),
         ) as completion:
             result = agent.scan(memory=[])
@@ -214,7 +214,7 @@ class PlanningProgressTests(unittest.TestCase):
 
 class FrameworkPersistenceTests(unittest.TestCase):
     def make_framework(self, memory_path: Path) -> DealAgentFramework:
-        with patch("deal_agent_framework.chromadb.PersistentClient") as client:
+        with patch("pricer.application.framework.chromadb.PersistentClient") as client:
             client.return_value.get_or_create_collection.return_value = object()
             return DealAgentFramework(db_path=memory_path.parent / "db", memory_path=memory_path)
 
@@ -256,7 +256,7 @@ class FrameworkPersistenceTests(unittest.TestCase):
             framework.store.upsert_opportunity(approved)
             framework.store.upsert_opportunity(rejected)
 
-            with patch("deal_agent_framework.MessagingAgent") as messaging:
+            with patch("pricer.application.framework.MessagingAgent") as messaging:
                 framework.submit_feedback(approved.deal.url, "approved")
                 framework.submit_feedback(approved.deal.url, "approved")
                 framework.submit_feedback(rejected.deal.url, "rejected")

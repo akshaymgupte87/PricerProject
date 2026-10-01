@@ -92,12 +92,12 @@ fi
 echo "[6/7] Checking the BM25 index and neural checkpoint..."
 if [[ ! -f "products_bm25.sqlite3" ]]; then
   echo "Building the BM25 index..."
-  "$PYTHON" build_bm25_index.py
+  "$PYTHON" -m pricer build-index
 fi
 
 if [[ ! -f "artifacts/deep_neural_network.pth" ]]; then
   echo "Building the neural-network checkpoint. This may take a long time..."
-  "$PYTHON" train_deep_neural_network.py --epochs 5
+  "$PYTHON" -m pricer train --epochs 5
 fi
 
 echo "[7/7] Starting the complete Gradio application..."
@@ -106,4 +106,4 @@ echo "The RSS scan starts when the page loads. Select a result to approve or rej
 
 export PRICER_OPEN_BROWSER="$OPEN_BROWSER"
 export LITELLM_LOCAL_MODEL_COST_MAP="True"
-exec "$PYTHON" price_is_right.py
+exec "$PYTHON" -m pricer dashboard

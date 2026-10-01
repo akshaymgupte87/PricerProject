@@ -10,7 +10,7 @@ The original notebook only called:
 runner.load("deep_neural_network.pth")
 ```
 
-Because no training code created that file, the only available path was to download the author's checkpoint. This project now includes `train_deep_neural_network.py`, which creates your own checkpoint from the product dataset.
+Because no training code created that file, the only available path was to download the author's checkpoint. This project now includes `src/pricer/jobs/train_neural.py`, which creates your own checkpoint from the product dataset.
 
 ## Network design
 
@@ -35,7 +35,7 @@ The local trainer defaults to 4 layers and 512 hidden units. This is much more p
 Activate the same Python environment used by the notebook, then run a small training job first:
 
 ```powershell
-python .\train_deep_neural_network.py --max-train 10000 --max-validation 2000 --epochs 1 --output .\artifacts\deep_neural_network.pth
+python -m pricer.jobs.train_neural --max-train 10000 --max-validation 2000 --epochs 1 --output .\artifacts\deep_neural_network.pth
 ```
 
 This verifies the dataset, vectorizer, GPU/CPU, training loop, validation, and checkpoint loading. It is not intended to produce the final-quality model.
@@ -46,14 +46,14 @@ The default `improved` profile uses 20,000 unigram/bigram features, a larger
 network, a robust dollar-aligned loss, and early stopping:
 
 ```powershell
-python .\train_deep_neural_network.py --profile improved --output .\artifacts\deep_neural_network.pth
+python -m pricer.jobs.train_neural --profile improved --output .\artifacts\deep_neural_network.pth
 ```
 
 To return to the previous feature, model, loss, and training defaults, select
 the reversible legacy profile:
 
 ```powershell
-python .\train_deep_neural_network.py --profile legacy --output .\artifacts\deep_neural_network.pth
+python -m pricer.jobs.train_neural --profile legacy --output .\artifacts\deep_neural_network.pth
 ```
 
 The script automatically uses CUDA when PyTorch detects a compatible GPU; otherwise it uses the CPU. CPU training over all 800,000 products can take a long time.
@@ -61,7 +61,7 @@ The script automatically uses CUDA when PyTorch detects a compatible GPU; otherw
 If GPU memory is exhausted, lower the batch size:
 
 ```powershell
-python .\train_deep_neural_network.py --epochs 5 --batch-size 64
+python -m pricer.jobs.train_neural --epochs 5 --batch-size 64
 ```
 
 For a larger network, increase `--hidden-size` or `--num-layers` gradually. Do not jump directly to 4,096 hidden units unless the available GPU memory has been checked.

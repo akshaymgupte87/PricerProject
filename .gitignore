@@ -226,3 +226,10 @@ artifacts/*.log
 products_vectorstore/
 products_bm25.sqlite3*
 wandb/
+
+# Generated summary batches and model-training runs
+/full/
+/jsonl/
+/price-*-lite/
+/notebooks/price-*-lite/
+/.uv-cache/

@@ -1,6 +1,6 @@
 import unittest
 
-from pricer.parser import get_weight, parse
+from pricer.data.parser import get_weight, parse
 
 
 class WeightParsingTests(unittest.TestCase):

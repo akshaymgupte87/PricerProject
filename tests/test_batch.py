@@ -9,7 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from pricer.batch import Batch
+from pricer.data.batch import Batch
 
 
 @contextmanager
@@ -44,7 +44,7 @@ class BatchConcurrencyTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir, working_directory(temp_dir):
             batch = Batch(items, 0, len(items), lite=True)
-            with patch("pricer.batch.ollama_chat", side_effect=fake_chat):
+            with patch("pricer.data.batch.ollama_chat", side_effect=fake_chat):
                 batch.run_local(workers=3)
 
             output = Path("lite/output/0_6.jsonl")

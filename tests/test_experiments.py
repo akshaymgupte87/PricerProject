@@ -69,7 +69,7 @@ class PreparationTests(unittest.TestCase):
             split_items(items, (6, 2, 1))
 
     def test_export_copies_and_rejects_incomplete_summaries(self):
-        from pricer.items import Item
+        from pricer.data.items import Item
         original = Item(title="Speaker", price=10, category="Electronics", full="raw", id="0", summary="summary")
         exported = summarized_copies(([original], [], []))[0][0]
         self.assertEqual(original.full, "raw")

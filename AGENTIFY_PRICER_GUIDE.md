@@ -78,22 +78,22 @@ These models are not interchangeable. The LoRA adapter was trained for Qwen2.5 3
 
 | File | Purpose |
 |---|---|
-| `pricer/items.py` | Defines the canonical product `Item` and its training prompt format. |
-| `pricer/parser.py` | Loads and normalizes Amazon metadata, cleans text, parses weights, and rejects unsuitable records. |
-| `pricer/loaders.py` | Resource-aware category loading and bounded multiprocessing. |
-| `pricer/batch.py` | Resumable local Ollama summarization in 1,000-item batches. |
-| `pricer/evaluator.py` | Concurrent prediction evaluation and Plotly reports. |
+| `src/pricer/data/items.py` | Defines the canonical product `Item` and its training prompt format. |
+| `src/pricer/data/parser.py` | Loads and normalizes Amazon metadata, cleans text, parses weights, and rejects unsuitable records. |
+| `src/pricer/data/loaders.py` | Resource-aware category loading and bounded multiprocessing. |
+| `src/pricer/data/batch.py` | Resumable local Ollama summarization in 1,000-item batches. |
+| `src/pricer/evaluation/evaluator.py` | Concurrent prediction evaluation and Plotly reports. |
 
 ### Local fine-tuned inference
 
 | File | Purpose |
 |---|---|
-| `llama.py` | Despite its historical name, loads Qwen2.5 3B and the custom LoRA adapter locally. |
-| `pricer_ephemeral.py` | Builds a pricing prompt, calls the shared local model, and parses a float. It no longer uses Modal. |
+| `src/pricer/inference/qwen.py` | Loads Qwen2.5 3B and the custom LoRA adapter locally. |
+| `src/pricer/inference/finetuned.py` | Builds a pricing prompt, calls the shared local model, and parses a float. It no longer uses Modal. |
 
 ### Agent package
 
-The `agents/` directory contains logging, deal models, predictors, orchestration, and notification code. Some files duplicate older utilities from `pricer/`, reflecting the project's notebook/course evolution.
+The `src/pricer/agents/` directory contains logging, deal models, predictors, orchestration, and notification code. Product data and evaluation are shared through src/pricer/data and src/pricer/evaluation.
 
 ### Tests and utilities
 
@@ -101,7 +101,6 @@ The `agents/` directory contains logging, deal models, predictors, orchestration
 |---|---|
 | `tests/test_parser.py` | Tests weight conversion and resilience to malformed product details. |
 | `tests/test_batch.py` | Tests concurrent local batch execution and valid single-writer JSONL output. |
-| `util.py` | Sequential compatibility adapter for notebooks; delegates to `pricer/evaluator.py`. |
 | `README.md` | Quick-start, concise architecture map, dashboard workflow, API, and operational guidance. |
 
 ## 4. Environment and hardware
@@ -161,7 +160,7 @@ The raw source is the `McAuley-Lab/Amazon-Reviews-2023` Hugging Face dataset. Th
 raw/meta_categories/meta_Appliances.jsonl
 ```
 
-The original dataset-script path is no longer supported by Datasets 5.x. `pricer/parser.py` therefore downloads raw JSONL with `hf_hub_download()`, iterates over it directly, and normalizes every row into a fixed `Features` schema.
+The original dataset-script path is no longer supported by Datasets 5.x. `src/pricer/data/parser.py` therefore downloads raw JSONL with `hf_hub_download()`, iterates over it directly, and normalizes every row into a fixed `Features` schema.
 
 Normalization handles nullable and irregular values:
 
@@ -212,7 +211,7 @@ Missing or malformed weights return `0.0` instead of rejecting an otherwise vali
 
 ## 8. Resource-aware category loading
 
-`pricer/loaders.py` is designed to avoid the memory and file-handle failures common when processing large Arrow datasets in notebooks.
+`src/pricer/data/loaders.py` is designed to avoid the memory and file-handle failures common when processing large Arrow datasets in notebooks.
 
 The main notebook processes these eight categories sequentially:
 
@@ -290,7 +289,7 @@ Some later experimentation cells intentionally load Ed Donner's published datase
 
 ## 10. Local Qwen 3.6 summarization pipeline
 
-Raw Amazon metadata is too noisy for consistent price modeling. `pricer/batch.py` uses local `qwen3.6:latest` to rewrite it into:
+Raw Amazon metadata is too noisy for consistent price modeling. `src/pricer/data/batch.py` uses local `qwen3.6:latest` to rewrite it into:
 
 ```text
 Title: Rewritten short precise title
@@ -334,7 +333,7 @@ Python threads allow multiple Ollama HTTP requests to be in flight. `OLLAMA_CONC
 
 ### Current Ollama generation settings
 
-The batch request disables thinking, keeps the model alive for 30 minutes, uses temperature 0.1, and allows 200 output tokens. Unlike `agents/preprocessor.py`, `pricer/batch.py` currently does not explicitly cap `num_ctx`; adding the same 4,096-token limit would make memory behavior more predictable on the RTX 3090.
+The batch request disables thinking, keeps the model alive for 30 minutes, uses temperature 0.1, and allows 200 output tokens. Unlike `agents/preprocessor.py`, `src/pricer/data/batch.py` currently does not explicitly cap `num_ctx`; adding the same 4,096-token limit would make memory behavior more predictable on the RTX 3090.
 
 ### Recorded local run
 
@@ -411,10 +410,9 @@ Hosted OpenAI, Claude, Gemini, Grok, and managed fine-tuning examples are retain
 
 ## 13. Evaluation framework
 
-`pricer/evaluator.py` is the canonical implementation for prediction and
-retrieval evaluation. `agents/evaluator.py` re-exports that API for older agent
-imports, while `util.py` is a thin sequential adapter retained for legacy
-notebooks. Evaluation behavior is implemented in one place.
+`src/pricer/evaluation/evaluator.py` is the canonical implementation for prediction and
+retrieval evaluation. Pass workers=1 for sequential model calls. Evaluation
+behavior is implemented in one place.
 
 The current package evaluator:
 
@@ -526,7 +524,7 @@ The `price-2026-08-03_11.02.04-lite` directory appears empty and is not the acti
 
 ## 17. Local fine-tuned inference
 
-### `llama.py`
+### `src/pricer/inference/qwen.py`
 
 The historical filename remains, but the implementation is Qwen-based.
 
@@ -542,7 +540,7 @@ It:
 
 Lazy loading means importing the module does not immediately consume GPU memory. The first `generate()` call loads the model; later calls in the same process reuse it.
 
-### `pricer_ephemeral.py`
+### `src/pricer/inference/finetuned.py`
 
 This wrapper creates the exact pricing prompt, calls `llama.generate()`, removes commas, extracts the first number with a regular expression, and returns a float.
 
@@ -661,14 +659,14 @@ The current eight-cell notebook is a focused integration exercise:
 7. Preprocess a microphone description through `qwen3.6:latest` in Ollama.
 8. Call `SpecialistAgent` locally.
 
-The cells use `importlib.reload()` so source changes appear without restarting the kernel. Reloading `llama.py` also clears its in-process model cache, so unnecessary repeated reloads make inference slower.
+The cells use `importlib.reload()` so source changes appear without restarting the kernel. Reloading `src/pricer/inference/qwen.py` also clears its in-process model cache, so unnecessary repeated reloads make inference slower.
 
 ## 21. Modal's current role
 
 Modal was used in the initial learning path:
 
-- `hello.py` still defines a Modal hello-world app.
-- the old `llama.py` requested a cloud T4;
+- `src/pricer/integrations/modal/hello.py` still defines a Modal hello-world app.
+- the old `src/pricer/inference/qwen.py` requested a cloud T4;
 - the old ephemeral pricer ran remotely;
 - the old specialist looked up `pricer-service` in Modal's `main` environment.
 
@@ -739,10 +737,8 @@ Secrets should remain in `.env`, provider credential stores, or environment vari
 
 ## 25. Known limitations and technical debt
 
-1. `llama.py` and `pricer_ephemeral.py` have historical names that no longer describe their Qwen/local behavior.
-2. `pricer/items.py` and `agents/items.py` are near-duplicates.
 3. The full 820,000-item local summarization is not represented by complete output artifacts in this workspace.
-4. `pricer/batch.py` should cap Ollama context as the agent preprocessor already does.
+4. `src/pricer/data/batch.py` should cap Ollama context as the agent preprocessor already does.
 5. Default batch concurrency of four may not be optimal for a 23 GB model on a 24 GB GPU.
 6. The full ensemble lacks `deep_neural_network.pth` and an initialized vector collection.
 7. Several agents still require hosted APIs, so the complete system is not offline.
@@ -773,20 +769,19 @@ Secrets should remain in `.env`, provider credential stores, or environment vari
 7. Skip the Modal hello cell unless specifically testing Modal.
 8. Run the direct pricing, wrapper, preprocessing, and specialist cells in order.
 
-The first call to each model is slower because weights must be loaded. Avoid reloading `llama.py` after it is warm unless its source code changed.
+The first call to each model is slower because weights must be loaded. Avoid reloading `src/pricer/inference/qwen.py` after it is warm unless its source code changed.
 
 ## 27. Recommended next steps
 
 ### Reliability
 
-1. Add `num_ctx=4096` to `pricer/batch.py`.
+1. Add `num_ctx=4096` to `src/pricer/data/batch.py`.
 2. Add unit tests for price parsing, prompt construction, and malformed model output.
 3. Add an integration test that mocks the local generator and verifies `SpecialistAgent` never imports Modal.
 4. Add explicit timeouts and error messages for local model startup and GPU-memory contention.
 
 ### Project organization
 
-1. Rename `llama.py` to something such as `local_finetuned_pricer.py`.
 2. Rename or remove the `ephemeral` terminology.
 3. Consolidate duplicate Item and evaluator modules.
 4. Turn notebook-proven steps into reproducible command-line entry points.

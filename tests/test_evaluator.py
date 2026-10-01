@@ -1,20 +1,10 @@
 import unittest
 from types import SimpleNamespace
 
-from agents import evaluator as agent_evaluator
-from pricer import evaluator as canonical_evaluator
-import util
+from pricer.evaluation import evaluator as canonical_evaluator
 
 
 class EvaluatorConsolidationTests(unittest.TestCase):
-    def test_agent_module_reexports_canonical_implementation(self):
-        self.assertIs(agent_evaluator.Tester, canonical_evaluator.Tester)
-        self.assertIs(agent_evaluator.evaluate, canonical_evaluator.evaluate)
-        self.assertIs(
-            agent_evaluator.aggregate_retrieval_metrics,
-            canonical_evaluator.aggregate_retrieval_metrics,
-        )
-
     def test_canonical_evaluator_accepts_domain_and_legacy_rows(self):
         domain = SimpleNamespace(title="Domain product", price=125)
         legacy = {
@@ -26,8 +16,8 @@ class EvaluatorConsolidationTests(unittest.TestCase):
         self.assertEqual(tester.run_datapoint(0)[:3], ("Domain product", 100, 125.0))
         self.assertEqual(tester.run_datapoint(1)[:3], ("Legacy product", 100, 250.0))
 
-    def test_legacy_adapter_is_sequential(self):
-        tester = util.Tester(lambda row: 100, [], size=0)
+    def test_sequential_evaluation_is_explicit(self):
+        tester = canonical_evaluator.Tester(lambda row: 100, [], size=0, workers=1)
         self.assertIsInstance(tester, canonical_evaluator.Tester)
         self.assertEqual(tester.workers, 1)
 

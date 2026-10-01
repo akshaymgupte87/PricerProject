@@ -1,5 +1,4 @@
 name: test
-
 on:
   push:
     branches: [main]
@@ -8,10 +7,20 @@ on:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    env:
+      LITELLM_LOCAL_MODEL_COST_MAP: "True"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.14"
-      - run: uv sync
-      - run: uv run python -m unittest discover -s tests -v
+      - run: uv sync --locked
+      - run: uv run --no-sync python -m unittest discover -s tests -v
+      - run: uv build
+      - name: Smoke test installed wheel outside checkout
+        shell: bash
+        run: |
+          uv venv /tmp/pricer-wheel --python 3.14
+          uv pip install --python /tmp/pricer-wheel/bin/python --no-deps dist/*.whl
+          cd /tmp
+          /tmp/pricer-wheel/bin/python -I -m pricer --help

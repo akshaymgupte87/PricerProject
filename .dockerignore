@@ -12,3 +12,11 @@ wandb
 price-*-lite
 products_vectorstore
 products_bm25.sqlite3
+
+venv
+.uv-cache
+dist
+build
+deployment
+.env
+memory.json

@@ -5,13 +5,13 @@ from unittest.mock import Mock
 
 import numpy as np
 
-from agents.ensemble_agent import EnsembleAgent
-from agents.deals import Deal, DealSelection
-from agents.frontier_agent import FrontierAgent
-from agents.guardrails import PriceGuardrailError, extract_single_price
-from agents.planning_agent import PlanningAgent
-from agents.rag_judge import RAGJudge, RAGJudgement
-from agents.retrieval import (
+from pricer.agents.ensemble_agent import EnsembleAgent
+from pricer.agents.deals import Deal, DealSelection
+from pricer.agents.frontier_agent import FrontierAgent
+from pricer.agents.guardrails import PriceGuardrailError, extract_single_price
+from pricer.agents.planning_agent import PlanningAgent
+from pricer.agents.rag_judge import RAGJudge, RAGJudgement
+from pricer.agents.retrieval import (
     RetrievalCandidate,
     SQLiteBM25Index,
     reciprocal_rank_fusion,

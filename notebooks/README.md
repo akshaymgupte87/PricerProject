@@ -1,3 +1,8 @@
+## Environment
+
+Run uv sync --locked from the repository root and select its Python environment
+as the notebook kernel. Notebook imports use the installed pricer package.
+
 # Pricing research notebook
 
 [PricerProject.ipynb](PricerProject.ipynb) is the single main research notebook.
@@ -38,7 +43,7 @@ unattended Run All workflow. In particular:
   from a terminal using the root README instructions.
 
 The original code also reuses model variables across experiments and densifies
-its neural training matrix. The reusable helpers in `pricer/experiments/` contain
+its neural training matrix. The reusable helpers in `src/pricer/experiments/` contain
 improvements to these behaviors, but the preserved notebook does not yet import
 them. Keeping the original notebook does not automatically apply those fixes.
 

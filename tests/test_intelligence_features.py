@@ -6,14 +6,14 @@ from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 
-from agents.deals import Deal, Opportunity
-from agents.ensemble_agent import EnsembleAgent, PriceEstimate
-from agents.retrieval import SQLiteBM25Index, expand_product_query
-from agents.state_graph import DealStateGraph
-from api import app
-from pricer.intelligence_store import IntelligenceStore
-from pricer.observability import Observability
-from pricer.monitoring import drift_level, population_stability_index
+from pricer.agents.deals import Deal, Opportunity
+from pricer.agents.ensemble_agent import EnsembleAgent, PriceEstimate
+from pricer.agents.retrieval import SQLiteBM25Index, expand_product_query
+from pricer.agents.state_graph import DealStateGraph
+from pricer.interfaces.api import app
+from pricer.persistence.intelligence_store import IntelligenceStore
+from pricer.telemetry.observability import Observability
+from pricer.telemetry.monitoring import drift_level, population_stability_index
 
 
 def sample_opportunity() -> Opportunity:

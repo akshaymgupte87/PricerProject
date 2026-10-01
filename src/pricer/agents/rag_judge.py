@@ -9,6 +9,7 @@ from litellm import completion
 from pydantic import BaseModel, Field
 
 from pricer.agents.frontier_agent import local_ollama_model
+from pricer.agents.llm_provider import api_base as configured_api_base
 
 
 class RAGJudgement(BaseModel):
@@ -37,7 +38,7 @@ class RAGJudge:
         self.model_name = local_ollama_model(
             model_name or os.getenv("PRICER_JUDGE_MODEL", "qwen3.6:latest")
         )
-        self.api_base = api_base or os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+        self.api_base = api_base or configured_api_base()
         self.completion_fn = completion_fn
 
     def judge(self, query: str, candidate: str) -> RAGJudgement:

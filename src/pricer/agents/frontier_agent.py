@@ -5,6 +5,7 @@ from typing import List, Dict
 from litellm import completion
 from sentence_transformers import SentenceTransformer
 from pricer.agents.agent import Agent
+from pricer.agents.llm_provider import api_base, model_name as provider_model
 from pricer.agents.guardrails import extract_single_price
 from pricer.agents.retrieval import (
     CrossEncoderReranker,
@@ -17,18 +18,17 @@ from pricer.agents.retrieval import (
 )
 
 
-def local_ollama_model(value: str) -> str:
-    """Normalize an Ollama tag into the provider/model form LiteLLM requires."""
-    value = value.strip()
-    return value if value.startswith("ollama/") else f"ollama/{value}"
-
-
-DEFAULT_MODEL = local_ollama_model(os.getenv("PRICER_FRONTIER_MODEL", "qwen3.6:latest"))
-DEFAULT_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+DEFAULT_MODEL = provider_model(os.getenv("PRICER_FRONTIER_MODEL", "qwen3.6:latest"))
+DEFAULT_API_BASE = api_base()
 DEFAULT_RERANKER_MODEL = os.getenv(
     "PRICER_RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
 ).strip()
 DEFAULT_BM25_PATH = Settings.from_env().bm25_path
+
+
+def local_ollama_model(value: str) -> str:
+    """Backward-compatible name for the configured provider model helper."""
+    return provider_model(value)
 
 
 class FrontierAgent(Agent):
@@ -54,7 +54,7 @@ class FrontierAgent(Agent):
         and the vector encoding model. No cloud API key is required.
         """
         self.log("Initializing Frontier Agent")
-        self.MODEL = local_ollama_model(model_name)
+        self.MODEL = provider_model(model_name)
         self.api_base = api_base
         self.log(f"Frontier Agent is using local model {self.MODEL}")
         self.collection = collection

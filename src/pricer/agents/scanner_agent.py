@@ -4,16 +4,11 @@ from litellm import completion
 from pricer.agents.deals import ScrapedDeal, DealSelection
 from pricer.agents.agent import Agent
 from pricer.agents.deal_seen_store import DealSeenStore
+from pricer.agents.llm_provider import api_base, model_name as provider_model
 
 
-def local_ollama_model(value: str) -> str:
-    """Normalize an Ollama tag into the provider/model form LiteLLM requires."""
-    value = value.strip()
-    return value if value.startswith("ollama/") else f"ollama/{value}"
-
-
-DEFAULT_MODEL = local_ollama_model(os.getenv("PRICER_SCANNER_MODEL", "qwen3.6:latest"))
-DEFAULT_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+DEFAULT_MODEL = provider_model(os.getenv("PRICER_SCANNER_MODEL", "qwen3.6:latest"))
+DEFAULT_API_BASE = api_base()
 
 
 def parse_deal_selection(content: str) -> DealSelection:
@@ -62,7 +57,7 @@ class ScannerAgent(Agent):
         No cloud API key is required.
         """
         self.log("Scanner Agent is initializing")
-        self.MODEL = local_ollama_model(model_name)
+        self.MODEL = provider_model(model_name)
         self.api_base = api_base
         self.seen_store = seen_store
         self.log(f"Scanner Agent is ready using local model {self.MODEL}")

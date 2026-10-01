@@ -5,22 +5,17 @@ from collections.abc import Callable
 from litellm import completion
 
 from pricer.agents.agent import Agent
+from pricer.agents.llm_provider import api_base, model_name as provider_model, provider
 
 
-def local_ollama_model(value: str) -> str:
-    """Return the provider-qualified model name LiteLLM expects."""
-    value = value.strip()
-    return value if value.startswith("ollama/") else f"ollama/{value}"
-
-
-DEFAULT_MODEL = local_ollama_model(
+DEFAULT_MODEL = provider_model(
     os.getenv(
         "PRICER_SPECIALIST_MODEL",
         os.getenv("PRICER_QWEN_MODEL", "qwen3.6:latest"),
     )
 )
-DEFAULT_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
-DEFAULT_BACKEND = os.getenv("PRICER_SPECIALIST_BACKEND", "ollama").strip().lower()
+DEFAULT_API_BASE = api_base()
+DEFAULT_BACKEND = os.getenv("PRICER_SPECIALIST_BACKEND", provider()).strip().lower()
 
 
 class SpecialistAgent(Agent):
@@ -38,17 +33,17 @@ class SpecialistAgent(Agent):
         completion_fn: Callable = completion,
     ):
         backend = backend.strip().lower()
-        if backend not in {"finetuned", "ollama"}:
-            raise ValueError("Specialist backend must be 'finetuned' or 'ollama'.")
+        if backend not in {"finetuned", "ollama", "vllm"}:
+            raise ValueError("Specialist backend must be 'finetuned', 'ollama', or 'vllm'.")
         self.backend = backend
         self.price_fn = price_fn
-        self.MODEL = local_ollama_model(model_name)
+        self.MODEL = provider_model(model_name)
         self.api_base = api_base
         self.completion_fn = completion_fn
         if self.backend == "finetuned":
             self.log("Specialist Agent is ready using local fine-tuned Qwen2.5")
         else:
-            self.log(f"Specialist Agent is ready using Ollama fallback {self.MODEL}")
+            self.log(f"Specialist Agent is ready using {backend} provider {self.MODEL}")
 
     @staticmethod
     def _extract_price(reply: str) -> float:

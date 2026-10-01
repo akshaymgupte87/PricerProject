@@ -9,21 +9,16 @@ from pricer.agents.deals import Deal, Opportunity
 from pricer.agents.scanner_agent import ScannerAgent
 from pricer.agents.ensemble_agent import EnsembleAgent
 from pricer.agents.messaging_agent import MessagingAgent
+from pricer.agents.llm_provider import api_base, model_name as provider_model
 
 
-def local_ollama_model(value: str) -> str:
-    """Normalize an Ollama model tag for LiteLLM."""
-    value = value.strip()
-    return value if value.startswith("ollama/") else f"ollama/{value}"
-
-
-DEFAULT_MODEL = local_ollama_model(
+DEFAULT_MODEL = provider_model(
     os.getenv(
         "PRICER_AUTONOMOUS_MODEL",
         os.getenv("PRICER_QWEN_MODEL", "qwen3.6:latest"),
     )
 )
-DEFAULT_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+DEFAULT_API_BASE = api_base()
 
 
 class AutonomousPlanningAgent(Agent):
@@ -44,7 +39,7 @@ class AutonomousPlanningAgent(Agent):
         self.scanner = ScannerAgent()
         self.ensemble = EnsembleAgent(collection)
         self.messenger = MessagingAgent()
-        self.MODEL = local_ollama_model(model_name)
+        self.MODEL = provider_model(model_name)
         self.api_base = api_base
         self.memory = None
         self.opportunity = None

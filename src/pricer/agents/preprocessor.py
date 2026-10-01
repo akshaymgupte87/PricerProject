@@ -1,10 +1,11 @@
 from litellm import completion
 from dotenv import load_dotenv
 import os
+from pricer.agents.llm_provider import api_base, model_name as provider_model, provider
 
 load_dotenv(override=False)
 
-DEFAULT_MODEL_NAME = os.getenv("PRICER_PREPROCESSOR_MODEL", "ollama/qwen3.6:latest")
+DEFAULT_MODEL_NAME = provider_model(os.getenv("PRICER_PREPROCESSOR_MODEL", "qwen3.6:latest"))
 DEFAULT_REASONING_EFFORT = "low" if "gpt-oss" in DEFAULT_MODEL_NAME else None
 
 SYSTEM_PROMPT = """Create a concise description of a product. Respond only in this format. Do not include part numbers.
@@ -28,8 +29,8 @@ class Preprocessor:
         self.model_name = model_name
         self.reasoning_effort = reasoning_effort
         self.base_url = base_url
-        if "ollama" in model_name and not base_url:
-            self.base_url = "http://localhost:11434"
+        if provider() in {"ollama", "vllm"} and not base_url:
+            self.base_url = api_base()
 
     def messages_for(self, text: str) -> list[dict]:
         return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": text}]
@@ -37,7 +38,7 @@ class Preprocessor:
     def preprocess(self, text: str) -> str:
         messages = self.messages_for(text)
         options = {}
-        if "ollama" in self.model_name:
+        if provider() in {"ollama", "vllm"}:
             options = {
                 "num_ctx": 4096,
                 "max_tokens": 200,

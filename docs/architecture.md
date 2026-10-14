@@ -13,8 +13,10 @@ The installable application lives in src/pricer. Install with uv sync --locked.
 | data | Dataset parsing, loading and summary batches |
 | evaluation | Shared prediction and retrieval evaluation |
 | experiments | Reusable research experiments |
-| jobs | Explicit BM25 indexing and neural training commands |
+| jobs | Explicit BM25, neural, and preference-tuning commands |
 | integrations/modal | Historical, opt-in Modal examples |
+| benchmarks | Provider-agnostic inference benchmark tooling |
+| LiteLLM Proxy | Central chat-model routing, keys, usage records, and request limits |
 
 Interfaces call application services; services compose agents and persistence.
 Research and training remain explicit jobs. Importing the top-level package or
@@ -30,11 +32,27 @@ Keep future implementations inside these packages, not root scripts.
     uv run pricer scan
     uv run pricer build-index
     uv run pricer train --epochs 5
+    uv run pricer dpo export --dataset artifacts/price_preferences.jsonl
+    uv run pricer dpo train --dataset artifacts/price_preferences.jsonl
     uv run python -m unittest discover -s tests -v
     uv build
 
 Training/index arguments are forwarded to the existing job parsers.
 The module entry point python -m pricer is equivalent to the installed command.
+
+Docker Compose routes application LLM requests through LiteLLM Proxy at
+`litellm_config.yaml`, with Postgres for virtual keys and usage records.
+Host-run commands can opt in with `PRICER_LLM_PROVIDER=gateway`; direct Ollama
+and vLLM modes remain available. Compose defaults to one local upstream model
+alias. Virtual-key RPM/TPM limits can be configured in the proxy; local model
+costs may be zero unless a cost map is configured.
+
+DPO examples come only from reviewed opportunities with a corrected fair price.
+The feedback snapshot stores the product description and comparable-price
+evidence; export uses the correction as the preferred answer and the saved model
+estimate as the dispreferred answer. Only the latest corrected review per URL is
+exported. Training is an explicit CUDA QLoRA job and writes a separate adapter;
+it does not switch inference automatically.
 
 ## Configuration and writable state
 
@@ -78,3 +96,8 @@ CPU/GPU and research dependencies is a separate migration.
 
 The API exports create_app() and uses FastAPI dependency injection, allowing
 isolated service overrides in tests. Health checks do not load ML models.
+
+Optional platform integrations are intentionally lightweight. `GET
+/metrics/prometheus` exposes operational metrics, `LANGCHAIN_TRACING_V2=true`
+enables LangSmith tracing when the optional package and credentials are present,
+and `pricer eval` checks measured metric artifacts against explicit thresholds.

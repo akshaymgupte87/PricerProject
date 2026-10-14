@@ -52,6 +52,8 @@ class IntelligenceStore:
             estimated_price REAL,
             corrected_price REAL,
             reason TEXT NOT NULL DEFAULT '',
+            product_description TEXT NOT NULL DEFAULT '',
+            evidence TEXT NOT NULL DEFAULT '[]',
             created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS price_history (
@@ -95,6 +97,14 @@ class IntelligenceStore:
             }
             if "estimated_price" not in feedback_columns:
                 connection.execute("ALTER TABLE feedback ADD COLUMN estimated_price REAL")
+            if "product_description" not in feedback_columns:
+                connection.execute(
+                    "ALTER TABLE feedback ADD COLUMN product_description TEXT NOT NULL DEFAULT ''"
+                )
+            if "evidence" not in feedback_columns:
+                connection.execute(
+                    "ALTER TABLE feedback ADD COLUMN evidence TEXT NOT NULL DEFAULT '[]'"
+                )
             connection.commit()
 
     def upsert_opportunity(self, opportunity: Opportunity) -> None:
@@ -166,19 +176,75 @@ class IntelligenceStore:
             )
             connection.execute(
                 """INSERT INTO feedback
-                   (url, decision, estimated_price, corrected_price, reason, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
+                   (url, decision, estimated_price, corrected_price, reason,
+                    product_description, evidence, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     canonical,
                     decision,
                     opportunity.estimate,
                     corrected_price,
                     reason.strip(),
+                    opportunity.deal.product_description,
+                    json.dumps(opportunity.evidence),
                     now,
                 ),
             )
             connection.commit()
         return opportunity
+
+    def preference_examples(self) -> list[dict[str, Any]]:
+        """Return corrected-price DPO pairs with the original product context."""
+        with closing(self.connect()) as connection:
+            rows = connection.execute(
+                """WITH labelled AS (
+                       SELECT url, product_description, estimated_price, corrected_price,
+                              evidence, created_at,
+                          ROW_NUMBER() OVER (PARTITION BY url ORDER BY id DESC) AS row_num
+                       FROM feedback
+                       WHERE corrected_price IS NOT NULL AND estimated_price IS NOT NULL
+                         AND product_description != ''
+                         AND corrected_price > 0 AND estimated_price > 0
+                   )
+                   SELECT url, product_description, estimated_price, corrected_price,
+                          evidence, created_at
+                   FROM labelled
+                   WHERE row_num = 1 AND corrected_price != estimated_price
+                   ORDER BY created_at"""
+            ).fetchall()
+        examples = []
+        for row in rows:
+            description = row["product_description"].strip()
+            estimate = float(row["estimated_price"])
+            corrected = float(row["corrected_price"])
+            evidence = json.loads(row["evidence"] or "[]")
+            comparisons = "\n".join(
+                f"- {item.get('description', 'Comparable product')}: "
+                f"${float(item.get('price', 0)):.2f}"
+                for item in evidence[:5]
+                if isinstance(item, dict) and item.get("price") is not None
+            )
+            prompt = (
+                "Estimate the fair US retail price of this product. "
+                "Use the product details and comparable items when supplied. "
+                "Return only one price in US dollars as a number.\n\n"
+                f"Product: {description}"
+            )
+            if comparisons:
+                prompt += f"\n\nComparable items and prices:\n{comparisons}"
+            examples.append(
+                {
+                    "url": row["url"],
+                    "prompt": [{"role": "user", "content": prompt}],
+                    "chosen": [{"role": "assistant", "content": f"${corrected:.2f}"}],
+                    "rejected": [{"role": "assistant", "content": f"${estimate:.2f}"}],
+                    "corrected_price": corrected,
+                    "estimated_price": estimate,
+                    "evidence": evidence,
+                    "created_at": row["created_at"],
+                }
+            )
+        return examples
 
     def price_history(self, url: str, limit: int = 100) -> list[dict[str, Any]]:
         with closing(self.connect()) as connection:

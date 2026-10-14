@@ -1,12 +1,81 @@
 services:
+  litellm-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: ${LITELLM_DB_PASSWORD:?Set LITELLM_DB_PASSWORD in .env}
+    volumes:
+      - litellm-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  litellm:
+    image: docker.litellm.ai/berriai/litellm:1.95.0
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:4000:4000"
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY in .env}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?Set LITELLM_SALT_KEY in .env}
+      DATABASE_URL: postgresql://litellm:${LITELLM_DB_PASSWORD:?Set LITELLM_DB_PASSWORD in .env}@litellm-db:5432/litellm
+      PRICER_GATEWAY_UPSTREAM_MODEL: ${PRICER_GATEWAY_UPSTREAM_MODEL:-ollama_chat/qwen3.6:latest}
+      PRICER_GATEWAY_UPSTREAM_API_BASE: ${PRICER_GATEWAY_UPSTREAM_API_BASE:-http://host.docker.internal:11434}
+      PRICER_GATEWAY_UPSTREAM_API_KEY: ${PRICER_GATEWAY_UPSTREAM_API_KEY:-not-required}
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
   api:
     build: .
     ports:
       - "8000:8000"
-    env_file: .env
     environment:
       PRICER_HOME: /app
-      PRICER_MEMORY_PATH: artifacts/memory.json
+      PRICER_MEMORY_PATH: ${PRICER_MEMORY_PATH:-artifacts/memory.json}
+      PRICER_VECTORSTORE_PATH: ${PRICER_VECTORSTORE_PATH:-products_vectorstore}
+      PRICER_BM25_PATH: ${PRICER_BM25_PATH:-products_bm25.sqlite3}
+      PRICER_CHECKPOINT_PATH: ${PRICER_CHECKPOINT_PATH:-artifacts/deep_neural_network.pth}
+      PRICER_INTELLIGENCE_PATH: ${PRICER_INTELLIGENCE_PATH:-artifacts/pricer_intelligence.sqlite3}
+      PRICER_API_KEY: ${PRICER_API_KEY:-}
+      PRICER_APPROVAL_CONFIDENCE: ${PRICER_APPROVAL_CONFIDENCE:-0.85}
+      PRICER_ALERT_DIR: ${PRICER_ALERT_DIR:-artifacts}
+      PRICER_RERANKER_MODEL: ${PRICER_RERANKER_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
+      PRICER_MAX_MODEL_SPREAD_RATIO: ${PRICER_MAX_MODEL_SPREAD_RATIO:-2.0}
+      PRICER_QWEN_MODEL: ${PRICER_QWEN_MODEL:-qwen3.6:latest}
+      PRICER_FRONTIER_MODEL: ${PRICER_FRONTIER_MODEL:-qwen3.6:latest}
+      PRICER_PREPROCESSOR_MODEL: ${PRICER_PREPROCESSOR_MODEL:-qwen3.6:latest}
+      PRICER_SCANNER_MODEL: ${PRICER_SCANNER_MODEL:-qwen3.6:latest}
+      PRICER_SPECIALIST_MODEL: ${PRICER_SPECIALIST_MODEL:-qwen3.6:latest}
+      PRICER_FINETUNED_BASE_MODEL: ${PRICER_FINETUNED_BASE_MODEL:-Qwen/Qwen2.5-3B-Instruct}
+      PRICER_FINETUNED_ADAPTER: ${PRICER_FINETUNED_ADAPTER:-}
+      PRICER_LLM_PROVIDER: gateway
+      PRICER_LLM_GATEWAY_API_BASE: http://litellm:4000/v1
+      PRICER_LLM_GATEWAY_MODEL: pricer-local
+      PRICER_LLM_API_KEY: ${PRICER_LLM_API_KEY:-${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY in .env}}
+      PRICER_SPECIALIST_BACKEND: ${PRICER_SPECIALIST_BACKEND:-gateway}
+    depends_on:
+      litellm:
+        condition: service_healthy
     volumes:
       - ./artifacts:/app/artifacts
       - ./products_vectorstore:/app/products_vectorstore
@@ -14,3 +83,6 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
+
+volumes:
+  litellm-db:

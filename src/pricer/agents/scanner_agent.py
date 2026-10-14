@@ -4,7 +4,7 @@ from litellm import completion
 from pricer.agents.deals import ScrapedDeal, DealSelection
 from pricer.agents.agent import Agent
 from pricer.agents.deal_seen_store import DealSeenStore
-from pricer.agents.llm_provider import api_base, model_name as provider_model
+from pricer.agents.llm_provider import api_base, api_key, model_name as provider_model
 
 
 DEFAULT_MODEL = provider_model(os.getenv("PRICER_SCANNER_MODEL", "qwen3.6:latest"))
@@ -99,6 +99,7 @@ class ScannerAgent(Agent):
             response = completion(
                 model=self.MODEL,
                 api_base=self.api_base,
+                api_key=api_key(),
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},

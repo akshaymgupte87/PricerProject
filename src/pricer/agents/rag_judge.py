@@ -9,7 +9,7 @@ from litellm import completion
 from pydantic import BaseModel, Field
 
 from pricer.agents.frontier_agent import local_ollama_model
-from pricer.agents.llm_provider import api_base as configured_api_base
+from pricer.agents.llm_provider import api_base as configured_api_base, api_key
 
 
 class RAGJudgement(BaseModel):
@@ -45,6 +45,7 @@ class RAGJudge:
         response = self.completion_fn(
             model=self.model_name,
             api_base=self.api_base,
+            api_key=api_key(),
             messages=[
                 {"role": "system", "content": self.SYSTEM_PROMPT},
                 {

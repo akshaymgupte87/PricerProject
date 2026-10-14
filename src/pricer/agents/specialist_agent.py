@@ -5,7 +5,7 @@ from collections.abc import Callable
 from litellm import completion
 
 from pricer.agents.agent import Agent
-from pricer.agents.llm_provider import api_base, model_name as provider_model, provider
+from pricer.agents.llm_provider import api_base, api_key, model_name as provider_model, provider
 
 
 DEFAULT_MODEL = provider_model(
@@ -19,7 +19,7 @@ DEFAULT_BACKEND = os.getenv("PRICER_SPECIALIST_BACKEND", provider()).strip().low
 
 
 class SpecialistAgent(Agent):
-    """Estimate prices with fine-tuned Qwen or an optional Ollama fallback."""
+    """Estimate prices with fine-tuned Qwen or a configured chat provider."""
 
     name = "Specialist Agent"
     color = Agent.RED
@@ -33,8 +33,10 @@ class SpecialistAgent(Agent):
         completion_fn: Callable = completion,
     ):
         backend = backend.strip().lower()
-        if backend not in {"finetuned", "ollama", "vllm"}:
-            raise ValueError("Specialist backend must be 'finetuned', 'ollama', or 'vllm'.")
+        if backend not in {"finetuned", "ollama", "vllm", "gateway"}:
+            raise ValueError(
+                "Specialist backend must be 'finetuned', 'ollama', 'vllm', or 'gateway'."
+            )
         self.backend = backend
         self.price_fn = price_fn
         self.MODEL = provider_model(model_name)
@@ -63,10 +65,11 @@ class SpecialistAgent(Agent):
             self.price_fn = price
         return self.price_fn(description)
 
-    def _ollama_price(self, description: str) -> float:
+    def _provider_price(self, description: str) -> float:
         response = self.completion_fn(
             model=self.MODEL,
             api_base=self.api_base,
+            api_key=api_key(),
             messages=[
                 {
                     "role": "system",
@@ -93,7 +96,7 @@ class SpecialistAgent(Agent):
         result = (
             self._fine_tuned_price(description)
             if self.backend == "finetuned"
-            else self._ollama_price(description)
+            else self._provider_price(description)
         )
         if result <= 0:
             raise ValueError(f"Specialist returned a non-positive price: {result}")

@@ -5,7 +5,7 @@ from typing import List, Dict
 from litellm import completion
 from sentence_transformers import SentenceTransformer
 from pricer.agents.agent import Agent
-from pricer.agents.llm_provider import api_base, model_name as provider_model
+from pricer.agents.llm_provider import api_base, api_key, model_name as provider_model
 from pricer.agents.guardrails import extract_single_price
 from pricer.agents.retrieval import (
     CrossEncoderReranker,
@@ -201,6 +201,7 @@ class FrontierAgent(Agent):
         response = completion(
             model=self.MODEL,
             api_base=self.api_base,
+            api_key=api_key(),
             messages=self.messages_for(description, documents, prices),
             temperature=0,
             max_tokens=50,

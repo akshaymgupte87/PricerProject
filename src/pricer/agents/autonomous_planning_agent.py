@@ -9,7 +9,7 @@ from pricer.agents.deals import Deal, Opportunity
 from pricer.agents.scanner_agent import ScannerAgent
 from pricer.agents.ensemble_agent import EnsembleAgent
 from pricer.agents.messaging_agent import MessagingAgent
-from pricer.agents.llm_provider import api_base, model_name as provider_model
+from pricer.agents.llm_provider import api_base, api_key, model_name as provider_model
 
 
 DEFAULT_MODEL = provider_model(
@@ -190,6 +190,7 @@ class AutonomousPlanningAgent(Agent):
             response = completion(
                 model=self.MODEL,
                 api_base=self.api_base,
+                api_key=api_key(),
                 messages=messages,
                 tools=self.get_tools(),
                 # Keep Qwen's reasoning trace out of tool arguments/results.

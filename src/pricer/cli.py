@@ -6,15 +6,19 @@ import sys
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="pricer", description="Product pricing and deal intelligence")
-    parser.add_argument("command", choices=["api", "dashboard", "scan", "mcp", "build-index", "train"])
+    parser.add_argument("command", choices=["api", "dashboard", "scan", "mcp", "build-index", "train", "dpo"])
     arguments = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(arguments[:1])
     remaining = arguments[1:]
     from pricer.config import load_environment
     load_environment()
-    if args.command in {"build-index", "train"}:
+    if args.command in {"build-index", "train", "dpo"}:
         from importlib import import_module
-        name = "build_bm25" if args.command == "build-index" else "train_neural"
+        name = {
+            "build-index": "build_bm25",
+            "train": "train_neural",
+            "dpo": "train_dpo",
+        }[args.command]
         previous = sys.argv
         try:
             sys.argv = [f"pricer {args.command}", *remaining]

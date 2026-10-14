@@ -1,7 +1,7 @@
 from litellm import completion
 from dotenv import load_dotenv
 import os
-from pricer.agents.llm_provider import api_base, model_name as provider_model, provider
+from pricer.agents.llm_provider import api_base, api_key, model_name as provider_model, provider
 
 load_dotenv(override=False)
 
@@ -29,7 +29,7 @@ class Preprocessor:
         self.model_name = model_name
         self.reasoning_effort = reasoning_effort
         self.base_url = base_url
-        if provider() in {"ollama", "vllm"} and not base_url:
+        if provider() in {"ollama", "vllm", "gateway"} and not base_url:
             self.base_url = api_base()
 
     def messages_for(self, text: str) -> list[dict]:
@@ -38,7 +38,7 @@ class Preprocessor:
     def preprocess(self, text: str) -> str:
         messages = self.messages_for(text)
         options = {}
-        if provider() in {"ollama", "vllm"}:
+        if provider() in {"ollama", "vllm", "gateway"}:
             options = {
                 "num_ctx": 4096,
                 "max_tokens": 200,
@@ -51,6 +51,7 @@ class Preprocessor:
             model=self.model_name,
             reasoning_effort=self.reasoning_effort,
             api_base=self.base_url,
+            api_key=api_key(),
             **options,
         )
         self.total_input_tokens += response.usage.prompt_tokens

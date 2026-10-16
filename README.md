@@ -109,7 +109,29 @@ optional step, Compose uses the master key locally.
 The model alias `pricer-local` routes every agent to the configured upstream.
 The current Ollama/vLLM route is local, so token limits are useful; dollar
 budgets only help when LiteLLM has a nonzero cost for the selected model.
+The current 10-request warm sequential smoke result is recorded in
+[`benchmarks/results/gateway-smoke-2026-10-14.json`](benchmarks/results/gateway-smoke-2026-10-14.json);
+it validates nonempty responses and basic latency only, not load capacity.
 Keep the gateway bound to localhost and do not expose the master key publicly.
+
+#### Repeatable gateway evaluation
+
+The provider-neutral runner compares the same request cases through direct
+Ollama and LiteLLM. It records request failures, invalid outputs, latency,
+throughput, token usage, and cost only when pricing is known. Reports omit
+prompts, responses, and credentials. Run a baseline with:
+
+```sh
+uv run pricer gateway-eval --targets ollama,litellm \
+  --requests 50 --concurrency 1 --warmups 3
+```
+
+Repeat at concurrency 4 and 8 and compare JSON reports. The evaluator exits
+nonzero when request-failure, invalid-output, or configured pricing thresholds
+are exceeded. Pricing gates (`--max-mae`, `--max-wape`, and
+`--max-paired-mae-regression`) require independent holdout labels; set them only
+after measuring a baseline. The local smoke run is not a capacity or pricing
+accuracy claim.
 
 For a host-run dashboard or command, set `PRICER_LLM_PROVIDER=gateway`,
 `PRICER_LLM_GATEWAY_API_BASE=http://localhost:4000/v1`, and
@@ -138,6 +160,11 @@ product and comparable-price context, and pairs the corrected response as
 preferred with the original estimate as rejected. It keeps only the latest
 corrected review per product URL.
 
+This is a small human-feedback DPO experiment, not a complete RLHF pipeline. A
+corrected price is treated as preferred to the original estimate; that
+preference may be noisy and does not prove improved pricing quality. The
+exporter uses the same prompt format as the existing Qwen price adapter.
+
 Export and inspect the generated file before training:
 
 ```sh
@@ -148,11 +175,28 @@ uv run pricer dpo train --dataset artifacts/price_preferences.jsonl \
 
 QLoRA DPO requires a CUDA-enabled Linux or WSL2 environment. The default base
 is `Qwen/Qwen2.5-3B-Instruct`; training needs at least three corrected products
-to reserve validation data. The saved adapter is separate from the active
-inference adapter. Evaluate it against a held-out set before setting
-`PRICER_FINETUNED_ADAPTER` to use it. This is direct preference optimization from
-human corrections, not a reward-model/PPO pipeline; uncorrected approvals and
-rejections are deliberately excluded from price supervision.
+to form train and validation splits. Three is only a technical minimum, not a
+statistically meaningful sample size. The saved adapter is separate from the
+active inference adapter. Before using it, compare it with the base model on a
+separately curated JSONL holdout whose product IDs/URLs and related products
+were excluded from training. Each line needs `id`, `url`, `product_description`,
+and `actual_price`; labels should be independently checked and never derived
+from either model. The evaluator rejects ID/URL overlap and writes predictions,
+MAE/RMSE/WAPE, valid-output rate, latency, paired MAE change, and a bootstrap
+confidence interval:
+
+```sh
+uv run pricer dpo evaluate \
+  --dataset benchmarks/evaluation/pricing_holdout.jsonl \
+  --training-data artifacts/price_preferences.jsonl \
+  --adapter artifacts/qwen-price-dpo \\
+  --report artifacts/dpo-evaluation.json
+```
+
+Do not claim an improvement unless the independent holdout results support it.
+This is direct preference optimization from human corrections, not a complete
+reward-model/PPO RLHF pipeline; uncorrected approvals and rejections are
+deliberately excluded from price supervision.
 
 ## Project layout
 

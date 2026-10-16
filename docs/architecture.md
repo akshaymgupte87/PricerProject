@@ -51,8 +51,11 @@ DPO examples come only from reviewed opportunities with a corrected fair price.
 The feedback snapshot stores the product description and comparable-price
 evidence; export uses the correction as the preferred answer and the saved model
 estimate as the dispreferred answer. Only the latest corrected review per URL is
-exported. Training is an explicit CUDA QLoRA job and writes a separate adapter;
-it does not switch inference automatically.
+exported. The prompt matches the existing adapter's inference format. Training
+is an explicit CUDA QLoRA job and writes a separate adapter; it does not switch
+inference automatically. This is a human-feedback DPO experiment, not a full
+RLHF pipeline. Evaluate base and adapter on separately labelled holdout products
+with `pricer dpo evaluate`; overlapping training IDs and URLs are rejected.
 
 ## Configuration and writable state
 

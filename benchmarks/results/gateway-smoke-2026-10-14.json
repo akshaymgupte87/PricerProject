@@ -1,0 +1,29 @@
+{
+  "measured_at": "2026-10-14",
+  "target": "LiteLLM Proxy model alias pricer-local",
+  "upstream_model": "ollama_chat/qwen3.6:latest",
+  "host_gpu": "NVIDIA GeForce RTX 3090",
+  "endpoint": "http://127.0.0.1:4000/v1/chat/completions",
+  "request_profile": {
+    "count": 10,
+    "concurrency": 1,
+    "max_tokens": 12,
+    "temperature": 0,
+    "think": false,
+    "success_requires_nonempty_content": true
+  },
+  "results": {
+    "successes": 10,
+    "failures": 0,
+    "mean_latency_seconds": 0.207,
+    "p50_latency_seconds": 0.192,
+    "p95_latency_seconds": 0.253,
+    "sequential_requests_per_second": 4.822
+  },
+  "notes": [
+    "This is a 10-request sequential smoke measurement, not a concurrency or capacity test.",
+    "An initial request without think=false returned HTTP 200 with empty assistant content; this documented run adds the same option used by app calls and validates that content is nonempty.",
+    "Latency excludes model startup because the upstream was already warm.",
+    "This captures the host GPU and upstream model, but not GPU utilization, memory, or exact Ollama model digest."
+  ]
+}

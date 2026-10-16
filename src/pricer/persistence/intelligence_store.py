@@ -217,27 +217,20 @@ class IntelligenceStore:
             description = row["product_description"].strip()
             estimate = float(row["estimated_price"])
             corrected = float(row["corrected_price"])
-            evidence = json.loads(row["evidence"] or "[]")
-            comparisons = "\n".join(
-                f"- {item.get('description', 'Comparable product')}: "
-                f"${float(item.get('price', 0)):.2f}"
-                for item in evidence[:5]
-                if isinstance(item, dict) and item.get("price") is not None
-            )
+            # Match the prompt format used by the existing Qwen price adapter.
+            # DPO completion text starts immediately after the established prefix.
             prompt = (
-                "Estimate the fair US retail price of this product. "
-                "Use the product details and comparable items when supplied. "
-                "Return only one price in US dollars as a number.\n\n"
-                f"Product: {description}"
+                "What does this cost to the nearest dollar?\n\n"
+                f"{description}"
+                + "\n\nPrice is $"
             )
-            if comparisons:
-                prompt += f"\n\nComparable items and prices:\n{comparisons}"
+            evidence = json.loads(row["evidence"] or "[]")
             examples.append(
                 {
                     "url": row["url"],
-                    "prompt": [{"role": "user", "content": prompt}],
-                    "chosen": [{"role": "assistant", "content": f"${corrected:.2f}"}],
-                    "rejected": [{"role": "assistant", "content": f"${estimate:.2f}"}],
+                    "prompt": prompt,
+                    "chosen": f"{corrected:.0f}",
+                    "rejected": f"{estimate:.0f}",
                     "corrected_price": corrected,
                     "estimated_price": estimate,
                     "evidence": evidence,

@@ -1,0 +1,16 @@
+[targets.ollama]
+provider = "ollama"
+protocol = "ollama-native"
+base_url = "http://127.0.0.1:11434"
+model = "qwen3.6:latest"
+api_key_envs = ["OLLAMA_API_KEY"]
+
+[targets.litellm]
+provider = "litellm"
+base_url = "http://127.0.0.1:4000/v1"
+model = "pricer-local"
+api_key_envs = ["PRICER_LLM_API_KEY", "LITELLM_MASTER_KEY"]
+
+# Add explicit input/output rates here for billable upstream models. Local
+# models without a configured rate report estimated_cost_usd as null.
+# cost_per_million_tokens = { input = 0.0, output = 0.0 }

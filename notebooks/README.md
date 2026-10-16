@@ -3,12 +3,22 @@
 Run uv sync --locked from the repository root and select its Python environment
 as the notebook kernel. Notebook imports use the installed pricer package.
 
-# Pricing research notebook
+# Runnable module notebook
 
-[PricerProject.ipynb](PricerProject.ipynb) is the single main research notebook.
-Its original 54 cells are preserved. Data preparation, summarization, model
-experiments, and evaluation stay together rather than being split across five
-smaller notebooks.
+[Pricer_Modules.ipynb](Pricer_Modules.ipynb) is the runnable, local-first tour of
+the current `src/pricer` package. Its core examples use synthetic products and
+temporary storage; they do not require credentials, network access, or a model
+server. External data, inference, scanning, and training are clearly marked as
+optional operations.
+
+Run `uv sync --locked` from the repository root, then select that environment
+as the notebook kernel and run all cells from top to bottom.
+
+# Historical research notebook
+
+[PricerProject.ipynb](PricerProject.ipynb) preserves the original 54-cell
+research workflow. It contains historical experiments and is not the runnable
+entry point for the current package.
 
 ## Sections in their original order
 

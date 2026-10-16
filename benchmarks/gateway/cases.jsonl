@@ -1,0 +1,2 @@
+{"id":"numeric-response","messages":[{"role":"user","content":"Return only the number 100."}],"request":{"max_tokens":12,"temperature":0,"think":false},"checks":{"nonempty":true,"regex":"100"}}
+{"id":"simple-explanation","messages":[{"role":"user","content":"In one short sentence, explain why prices for the same product can differ."}],"request":{"max_tokens":40,"temperature":0,"think":false},"checks":{"nonempty":true}}

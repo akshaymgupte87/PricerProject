@@ -107,7 +107,7 @@ def train(dataset_path: Path, output: Path, base_model: str, args) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("export", "train"))
+    parser.add_argument("action", choices=("export", "train", "evaluate"))
     parser.add_argument("--database", type=Path, default=Settings.from_env().intelligence_path)
     parser.add_argument(
         "--dataset", type=Path,
@@ -129,6 +129,18 @@ def parse_args():
     parser.add_argument("--gradient-accumulation-steps", type=int, default=8)
     parser.add_argument("--max-length", type=int, default=512)
     parser.add_argument("--max-prompt-length", type=int, default=384)
+    parser.add_argument(
+        "--adapter", type=Path,
+        default=Path(os.getenv("PRICER_FINETUNED_ADAPTER", str(Settings.from_env().home / "artifacts" / "qwen-price-dpo"))),
+    )
+    parser.add_argument(
+        "--training-data", type=Path,
+        help="Preference JSONL used for overlap checks during independent evaluation.",
+    )
+    parser.add_argument(
+        "--report", type=Path,
+        default=Settings.from_env().home / "artifacts" / "dpo-evaluation.json",
+    )
     return parser.parse_args()
 
 
@@ -137,11 +149,19 @@ def main():
     if args.action == "export":
         count = export_preferences(args.database, args.dataset, args.minimum_examples)
         print(f"Exported {count} DPO preference pairs to {args.dataset}")
-    else:
+    elif args.action == "train":
         if not 0 < args.validation_fraction < 0.5:
             raise ValueError("--validation-fraction must be between 0 and 0.5")
         train(args.dataset, args.output, args.base_model, args)
         print(f"Saved DPO adapter to {args.output}")
+    else:
+        if args.training_data is None:
+            raise ValueError("dpo evaluate requires --training-data for overlap checks")
+        from pricer.jobs.evaluate_dpo import evaluate
+
+        report = evaluate(args.dataset, args.training_data, args.base_model, args.adapter, args.report)
+        print(json.dumps({key: value for key, value in report.items() if key != "predictions"}, indent=2))
+        print(f"Saved paired evaluation report to {args.report}")
 
 
 if __name__ == "__main__":

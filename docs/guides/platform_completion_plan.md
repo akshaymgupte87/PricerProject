@@ -163,19 +163,11 @@ docker compose --profile monitoring up --build
 
 Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`. The datasource is provisioned from `monitoring/grafana/datasources/pricer.yml`. Useful queries are `pricer_http_requests_total`, `pricer_http_failures_total`, `pricer_http_latency_seconds_p95`, and `pricer_metric_average`.
 
-## 11. Reorganize notebooks carefully
+## 11. Notebook organization
 
-Search references before moving files:
-
-```powershell
-rg -n "Qlora_intro|Qlora_Training|notebooks/|notebooks\\"
-New-Item -ItemType Directory -Force notebooks\course
-New-Item -ItemType Directory -Force notebooks\experiments
-Move-Item Qlora_intro.ipynb notebooks\course\qlora_intro.ipynb
-Move-Item Qlora_Training.ipynb notebooks\course\qlora_training.ipynb
-```
-
-Update README, attribution, and notebook references after moving files.
+Project notebooks and their index now live in `docs/guides/`, alongside the
+technical guides. The runnable package tour is `Pricer_Modules.ipynb`; historical
+and course-derived notebooks are retained for context and attributed separately.
 
 ## 12. Final checks
 

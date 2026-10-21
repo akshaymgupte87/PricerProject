@@ -1,0 +1,38 @@
+[
+  {
+    "product_description": "Illustrative listing: 27-inch 4K USB-C monitor with an adjustable stand",
+    "listing_price": 249.99,
+    "illustrative_estimate": 329.00,
+    "confidence": 0.72,
+    "model_estimates": {"specialist": 315.00, "frontier_rag": 340.00, "neural_network": 320.00},
+    "evidence": [
+      {"description": "27-inch 4K monitor, USB-C, height-adjustable stand", "price": 329.99, "category": "Electronics"},
+      {"description": "28-inch UHD monitor with USB-C power delivery", "price": 349.00, "category": "Electronics"},
+      {"description": "27-inch 4K display with ergonomic stand", "price": 299.99, "category": "Electronics"}
+    ],
+    "review_note": "Check panel type, included cables, condition, and return policy."
+  },
+  {
+    "product_description": "Illustrative listing: cordless drill kit with two batteries and charger",
+    "listing_price": 119.00,
+    "illustrative_estimate": 159.00,
+    "confidence": 0.61,
+    "model_estimates": {"specialist": 145.00, "frontier_rag": 170.00, "neural_network": 155.00},
+    "evidence": [
+      {"description": "18V brushless drill kit with two batteries", "price": 169.00, "category": "Tools"},
+      {"description": "20V cordless drill and charger, tool only", "price": 99.00, "category": "Tools"}
+    ],
+    "review_note": "Battery count and included accessories vary; verify the exact bundle."
+  },
+  {
+    "product_description": "Illustrative listing: noise-cancelling wireless headphones, over-ear, black",
+    "listing_price": 179.00,
+    "illustrative_estimate": 199.00,
+    "confidence": 0.48,
+    "model_estimates": {"specialist": 240.00, "frontier_rag": 179.00, "neural_network": 205.00},
+    "evidence": [
+      {"description": "Wireless over-ear noise-cancelling headphones", "price": 189.00, "category": "Electronics"}
+    ],
+    "review_note": "The estimates disagree and there is little evidence; treat this as a high-risk review."
+  }
+]

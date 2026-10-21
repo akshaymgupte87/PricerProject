@@ -1,6 +1,6 @@
 # Agentify Pricer notebook troubleshooting
 
-This guide records the recurring fixes used by `notebooks/Agentify_Pricer.ipynb`.
+This guide records the recurring fixes used by [Agentify_Pricer.ipynb](Agentify_Pricer.ipynb).
 
 ## Local Qwen through LiteLLM
 

@@ -84,7 +84,7 @@ if [[ ! -d "products_vectorstore" ]]; then
   cat >&2 <<'EOF'
 Missing products_vectorstore/.
 This generated third-party dataset is intentionally not stored in Git.
-Follow AGENTIFY_PRICER_GUIDE.md to create or import it, then rerun this script.
+Follow docs/guides/AGENTIFY_PRICER_GUIDE.md to create or import it, then rerun this script.
 EOF
   exit 1
 fi

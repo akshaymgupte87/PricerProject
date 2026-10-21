@@ -58,11 +58,11 @@ improvements to these behaviors, but the preserved notebook does not yet import
 them. Keeping the original notebook does not automatically apply those fixes.
 
 The five alternative research notebooks have been removed. The separate
-[QLoRA introduction](../Qlora_intro.ipynb),
-[QLoRA training](../Qlora_Training.ipynb), and
+[QLoRA introduction](Qlora_intro.ipynb),
+[QLoRA training](Qlora_Training.ipynb), and
 [Agentify Pricer](Agentify_Pricer.ipynb) notebooks retain their existing roles.
 [Legacy notes](legacy_experiments.md) also preserve historical example material.
 
-See the [Complete Technical Guide](../AGENTIFY_PRICER_GUIDE.md) for the detailed
-explanation of the original workflow, and the [root README](../README.md) for
+See the [Complete Technical Guide](AGENTIFY_PRICER_GUIDE.md) for the detailed
+explanation of the original workflow, and the [root README](../../README.md) for
 application startup and the project overview.

@@ -68,10 +68,10 @@ These models are not interchangeable. The LoRA adapter was trained for Qwen2.5 3
 
 | File | Purpose |
 |---|---|
-| `notebooks/PricerProject.ipynb` | Main data engineering and model experimentation notebook. It covers ingestion, sampling, local Qwen summarization, baselines, evaluation, and local Qwen price estimation. |
+| `PricerProject.ipynb` | Main data engineering and model experimentation notebook. It covers ingestion, sampling, local Qwen summarization, baselines, evaluation, and local Qwen price estimation. |
 | `Qlora_intro.ipynb` | Demonstrates unquantized, 8-bit, and 4-bit loading and examines LoRA concepts using Qwen2.5 3B. |
 | `Qlora_Training.ipynb` | Performs the actual QLoRA supervised fine-tuning run and evaluates the resulting adapter. |
-| `notebooks/Agentify_Pricer.ipynb` | Incrementally wraps preprocessing and specialist pricing in agents and verifies local execution. |
+| `Agentify_Pricer.ipynb` | Incrementally wraps preprocessing and specialist pricing in agents and verifies local execution. |
 | `sample.ipynb` | Minimal sample notebook unrelated to the core pipeline. |
 
 ### Core pricing package
@@ -245,7 +245,7 @@ Records are materialized as ordinary Python dictionaries in chunks of 1,000. Thi
 
 ## 9. Deduplication, weighted sampling, and splits
 
-After loading, `notebooks/PricerProject.ipynb`:
+After loading, `PricerProject.ipynb`:
 
 1. Shuffles records with seed 42.
 2. Removes duplicate titles.
@@ -359,7 +359,7 @@ The locally cached copy contains:
 
 During the lite training run, validation is limited to the first 500 records.
 
-## 12. Model experiments in `notebooks/PricerProject.ipynb`
+## 12. Model experiments in `PricerProject.ipynb`
 
 The main notebook compares several approaches.
 
@@ -646,7 +646,7 @@ review = critic.run(
 
 On one RTX 3090, sequential calls are recommended. Concurrent requests add KV-cache memory, and Qwen 3.6 already nearly fills the GPU. The fine-tuned 3B Transformers model is a separate process/model allocation; when it and Ollama are warm simultaneously, Ollama may offload layers to system RAM.
 
-## 20. `notebooks/Agentify_Pricer.ipynb` walkthrough
+## 20. `Agentify_Pricer.ipynb` walkthrough
 
 The current eight-cell notebook is a focused integration exercise:
 
@@ -765,7 +765,7 @@ Secrets should remain in `.env`, provider credential stores, or environment vari
 
 4. Ensure `qwen3.6:latest` is installed.
 5. Ensure Hugging Face credentials can read the private adapter if it is not cached.
-6. In `notebooks/Agentify_Pricer.ipynb`, run setup cells 0–2.
+6. In `Agentify_Pricer.ipynb`, run setup cells 0–2.
 7. Skip the Modal hello cell unless specifically testing Modal.
 8. Run the direct pricing, wrapper, preprocessing, and specialist cells in order.
 

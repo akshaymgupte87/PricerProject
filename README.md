@@ -1,6 +1,53 @@
 # PricerProject
 
-An AI application that estimates product prices, compares them with listing prices, and presents potential deals for human review.
+**Product pricing and deal intelligence · Python, PyTorch, Chroma, SQLite BM25, FastAPI, Gradio, Ollama/vLLM**
+
+I built a local-first application that compares deal listings with product evidence, combines three pricing signals, and routes uncertain opportunities through a human review workflow. The main engineering challenge is making model estimates inspectable: each opportunity carries comparable-product evidence, model disagreement, confidence, and a saved review decision. This is a portfolio project and research system; it has not been validated for production pricing decisions.
+
+[Run the offline walkthrough](#quick-demo) · [Architecture](docs/guides/architecture.md) · [Source](src/pricer/) · [Attribution](docs/guides/origins-and-credits.md)
+
+**Resume-ready summary:** Built a local-first product deal intelligence application in Python using hybrid Chroma/BM25 retrieval, a three-signal pricing ensemble, FastAPI/Gradio interfaces, and an auditable human-review workflow; added provider routing, evaluation tooling, and reproducible model/index jobs.
+
+## What I built
+
+- Packaged the application as `src/pricer`, with lazy CLI startup, configuration, API/dashboard interfaces, and persistent review history ([architecture](docs/guides/architecture.md)).
+- Implemented hybrid semantic and BM25 retrieval with reranking and cited comparables, then combined retrieved-price, local-LLM, and neural estimates ([retrieval](src/pricer/agents/retrieval.py), [ensemble](src/pricer/agents/ensemble_agent.py)).
+- Added guardrails, confidence and disagreement signals, and a human approval flow that records decisions and corrected prices ([dashboard](src/pricer/interfaces/dashboard.py), [persistence](src/pricer/persistence/intelligence_store.py)).
+- Added interchangeable Ollama/vLLM/LiteLLM routing, CI, and benchmark/evaluation commands, plus a reproducible streaming index builder ([prepare_index.py](src/pricer/jobs/prepare_index.py)). Course-derived QLoRA notebooks are credited separately in [origins and credits](docs/guides/origins-and-credits.md).
+
+## Evaluation evidence
+
+There is currently **no independently labelled pricing holdout result checked into this repository**, so no pricing MAE/WAPE or accuracy claim is reported. The tracked [gateway smoke measurement](benchmarks/results/gateway-smoke-2026-10-14.json) covers 10 warm, sequential LiteLLM requests: 10 succeeded, mean latency was 0.207 s, p95 was 0.253 s, and throughput was 4.822 requests/s. It measures nonempty responses and latency for one local setup; it says nothing about price accuracy, concurrency capacity, cold starts, or other machines.
+
+For a pricing-quality claim, prepare independent product labels that do not overlap training products, run `pricer dpo evaluate` (or the shared evaluation tooling), and commit the dataset description, baseline, sample count, metrics, and report under `benchmarks/`. The DPO evaluator rejects ID/URL overlap, but the repository does not yet contain that independent holdout or a completed result. The small fixture below is synthetic and must never be counted as evaluation data.
+
+## Quick demo
+
+The offline walkthrough displays precomputed illustrative opportunities and comparable-product evidence. It does not call a model, scan listings, or need the vector store, neural checkpoint, credentials, or network access.
+
+```sh
+uv sync --locked
+uv run pricer demo
+```
+
+Open **http://127.0.0.1:7860** and select a row to inspect its details. Every price and comparable in this demo is synthetic; it demonstrates the review interface only. The app binds to localhost and does not share the demo publicly.
+
+## Live pricing setup
+
+Live pricing needs a Qwen-compatible Ollama or vLLM endpoint, a Chroma product collection, a BM25 sidecar, and `artifacts/deep_neural_network.pth`. For a fresh checkout, prepare a bounded local index from the public `ed-donner/items_full` dataset, then train the neural model from that dataset:
+
+```sh
+uv sync --locked
+ollama pull qwen3.6:latest
+ollama serve
+uv run pricer prepare-index --max-items 100000
+uv run pricer train --profile improved --output artifacts/deep_neural_network.pth
+uv run pricer dashboard
+```
+
+Before starting, copy `.env.example` to `.env` and set `OLLAMA_API_BASE=http://localhost:11434` for a host-run Ollama service. For a vLLM service use the configuration further down. The index job downloads the dataset and the `sentence-transformers/all-MiniLM-L6-v2` encoder on first use. The 100,000-item setting is a setup-sized index, not an evaluation sample; increase `--max-items` for a larger retrieval corpus. Training uses the dataset's training split and validation split and may take a long time, especially on CPU. `prepare-index` adds/updates collection records and rebuilds the BM25 sidecar. To rebuild BM25 after changing an existing collection, run `uv run pricer build-index`.
+
+The full retrieval/training details live in [the technical guide](docs/guides/AGENTIFY_PRICER_GUIDE.md), [the neural training guide](docs/guides/BUILD_DEEP_NEURAL_NETWORK.md), and [the local alert guide](docs/guides/LOCAL_DEAL_ALERTS.md). Generated indexes and checkpoints are intentionally excluded from Git.
 
 ## How it works
 
@@ -15,6 +62,9 @@ The project demonstrates:
 - **Human review:** a dashboard records approvals, rejections, and price corrections.
 
 The specialist uses Ollama by default; the fine-tuned adapter is optional.
+
+<details>
+<summary>Advanced provider and gateway setup</summary>
 
 ## Run locally
 
@@ -31,7 +81,7 @@ Create a `.env` file using [.env.example](.env.example) as a reference. For loca
 OLLAMA_API_BASE=http://localhost:11434
 ```
 
-Pricing requires a populated `products_vectorstore/` and `artifacts/deep_neural_network.pth`. See the [technical guide](AGENTIFY_PRICER_GUIDE.md) for the vector store and [training guide](BUILD_DEEP_NEURAL_NETWORK.md) for the neural checkpoint. Generated assets are excluded from Git.
+The live application uses the index and checkpoint provisioned above. Demo mode needs neither.
 
 The LLM provider is configurable. Ollama is the default:
 
@@ -151,6 +201,11 @@ uv run pricer build-index
 uv run pricer --help
 ```
 
+</details>
+
+<details>
+<summary>Human feedback and DPO experiment</summary>
+
 ### Train from reviewed prices (DPO)
 
 When submitting feedback, enter a corrected fair price to create a preference
@@ -198,14 +253,17 @@ This is direct preference optimization from human corrections, not a complete
 reward-model/PPO RLHF pipeline; uncorrected approvals and rejections are
 deliberately excluded from price supervision.
 
+</details>
+
 ## Project layout
 
 - `src/pricer/` — application, pricing models, retrieval, data processing, and storage.
-- `notebooks/` — research and experiments.
+- `docs/guides/` — all project Markdown and Jupyter notebooks, including the runnable package tour, historical research, QLoRA experiments, and operator guides. Start with [the notebook guide](docs/guides/notebooks.md).
 - `tests/` — automated tests.
-- `artifacts/` — generated models, logs, and local state.
+- `benchmarks/demo/` — explicitly synthetic walkthrough fixtures, not evaluation data.
+- `artifacts/` — generated models, logs, and local state (not committed).
 
-See the [code map](docs/architecture.md) for package details.
+See the [code map](docs/guides/architecture.md) for package details.
 
 ## Tests
 
@@ -217,4 +275,4 @@ Price estimates are experimental predictions; verify the product and listing bef
 
 ## Attribution
 
-The QLoRA notebooks were based on Ed Donner's course material. See [docs/origins-and-credits.md](docs/origins-and-credits.md) for the distinction between course-derived research and the original or extended application engineering.
+The QLoRA notebooks were based on Ed Donner's course material. See [the attribution notes](docs/guides/origins-and-credits.md) for the distinction between course-derived research and the original or extended application engineering.

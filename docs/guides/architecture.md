@@ -28,8 +28,10 @@ Keep future implementations inside these packages, not root scripts.
     uv sync --locked
     uv run pricer api --host 127.0.0.1 --port 8000
     uv run pricer dashboard
+    uv run pricer demo
     uv run pricer mcp
     uv run pricer scan
+    uv run pricer prepare-index --max-items 100000
     uv run pricer build-index
     uv run pricer train --epochs 5
     uv run pricer dpo export --dataset artifacts/price_preferences.jsonl

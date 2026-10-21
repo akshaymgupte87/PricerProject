@@ -138,8 +138,8 @@ without a training loop:
 - Reference adapter: `ed-donner/price-2025-11-30_15.10.55-lite`
 - Run name: `price-<timestamp>`
 
-See the existing `../Qlora_intro.ipynb` and
-`../Qlora_Training.ipynb` for the separate QLoRA notebooks.
+See `Qlora_intro.ipynb` and `Qlora_Training.ipynb` for the
+separate QLoRA notebooks.
 
 ## Historical MAE values
 

@@ -1,0 +1,367 @@
+{
+  "run_id": "2026-10-01-dashboard-scan",
+  "started_at": "2026-10-01T11:02:02-07:00",
+  "source": "Captured from the completed local dashboard run logs and saved opportunity records.",
+  "scan": {
+    "feed": "DealNews RSS (electronics, computers, smart home)",
+    "unseen_deals": 29,
+    "qwen_model": "ollama/qwen3.6:latest",
+    "selected_deals": 5,
+    "selection": "Structured output; price and URL validated against scraped candidates"
+  },
+  "pricing": {
+    "preprocessor": "ollama/qwen3.6:latest",
+    "specialist_backend": "ollama",
+    "specialist_model": "ollama/qwen3.6:latest",
+    "retrieval_model": "ollama/qwen3.6:latest",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "dense_store": "Chroma",
+    "lexical_store": "SQLite FTS5 BM25 sidecar",
+    "fusion": "Reciprocal rank fusion",
+    "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "retrieved_per_deal": 5,
+    "ensemble_weights": {
+      "frontier_rag": 0.8,
+      "specialist": 0.1,
+      "neural_network": 0.1
+    },
+    "confidence": "Heuristic based on model agreement and evidence count; not calibrated accuracy."
+  },
+  "decision": {
+    "discount_threshold_usd": 50,
+    "minimum_discount_fraction_of_estimate": 0.2,
+    "qualified_deal": false,
+    "outcome": "No deal qualified for alert; the five saved opportunities remained pending review."
+  },
+  "fine_tuning": {
+    "adapter_used_in_this_run": false,
+    "note": "The run used the Ollama specialist backend. QLoRA adapter training and DPO from corrected human reviews are separate, explicit workflows."
+  },
+  "opportunities": [
+    {
+      "status": "pending",
+      "created_at": "2026-10-01T18:03:46.549122+00:00",
+      "opportunity": {
+        "deal": {
+          "product_description": "The DJI Osmo Nano is a compact, clip-on wearable camera designed for hands-free recording of sports, travel, and daily vlogs without the bulk of a gimbal. It features a 143-degree ultra-wide lens capable of 4K/60fps video with 10-bit color depth and D-Log M professional grading. The device includes built-in 128GB storage with microSD expansion, a 200-minute battery life with fast charging, and is waterproof up to 10 meters for outdoor adventures.",
+          "price": 368.0,
+          "url": "https://www.dealnews.com/products/DJI/DJI-Osmo-Nano-4-K-Wearable-Camera-128-GB-Standard-Combo/538835.html?iref=rss-c142",
+          "category": "Electronics",
+          "brand": "DJI",
+          "condition": "New",
+          "image_url": ""
+        },
+        "estimate": 355.0743316650391,
+        "discount": -12.925668334960903,
+        "model_estimates": {
+          "specialist": 599.0,
+          "frontier_rag": 349.0,
+          "neural_network": 159.74331665039062
+        },
+        "confidence": 0.528019323048414,
+        "confidence_low": 268.012506932247,
+        "confidence_high": 442.1361563978312,
+        "evidence": [
+          {
+            "id": "doc_404404",
+            "description": "Title: DJI Osmo 4K Handheld Stabilized Camera  \nCategory: Electronics  \nBrand: DJI  \nDescription: A compact, fully stabilized handheld camera that records 4K video and 12‑MP photos for ground‑level shooting.  \nDetails: Features 6‑hour battery life, 120 fps slow‑motion, remote control, and a 5‑inch screen for easy framing.",
+            "price": 499.0,
+            "category": "Electronics",
+            "score": 6.7548322677612305
+          },
+          {
+            "id": "doc_709722",
+            "description": "Title: DJI Osmo Pocket 3‑Axis 4K Gimbal Stabilizer  \nCategory: Electronics  \nBrand: DJI  \nDescription: A compact handheld gimbal that doubles as a 4K camera for cinematic video and high‑resolution stills.  \nDetails: Features 3‑axis stabilization, a 1/2.3\" sensor with an 80° f/2.0 lens, 4K60 video, 12MP photos, and intelligent modes like Active Track, FaceTrack, and NightShot.",
+            "price": 236.99,
+            "category": "Electronics",
+            "score": 6.629453182220459
+          },
+          {
+            "id": "doc_66386",
+            "description": "Title: DJI Osmo Gimbal with 12‑MP Camera  \nCategory: Electronics  \nBrand: DJI  \nDescription: A compact 12‑MP camera and 4K/60fps gimbal combo for the Osmo platform.  \nDetails: Ultra‑HD 4K video at 30fps, 1080p at 120fps, 12‑MP stills, Wi‑Fi connectivity, 1‑year warranty.",
+            "price": 149.0,
+            "category": "Electronics",
+            "score": 6.545249938964844
+          },
+          {
+            "id": "doc_749792",
+            "description": "Title: DJI Osmo+ 4K 7× Zoom Handheld Gimbal  \nCategory: Electronics  \nBrand: DJI  \nDescription: A lightweight handheld gimbal that integrates a 4K 12‑MP camera with a 7× optical‑digital zoom for smooth, high‑quality shots.  \nDetails: Features 3‑axis stabilization, 3.5× optical + 2× digital lossless zoom, silent recording, and comes with accessories like a FlexiMic, UV filter, and 64 GB microSD card.",
+            "price": 379.0,
+            "category": "Electronics",
+            "score": 6.52475643157959
+          },
+          {
+            "id": "doc_710392",
+            "description": "Title: DJI OSMO Action Camera 4K HD Waterproof Video Cam  \nCategory: Electronics  \nBrand: DJI  \nDescription: Compact 4K action camera featuring HDR video, 1/2.3” CMOS sensor, and RockSteady stabilization, ideal for sports and adventure filming.  \nDetails: Includes battery, charging kit, adhesive mount, and frame accessories; waterproof design and 12MP still capture with portrait mode.",
+            "price": 29.9,
+            "category": "Electronics",
+            "score": 6.482789993286133
+          }
+        ],
+        "explanation": "Weighted estimate from three models ($160–$599); 5 retrieved comparables; model agreement 37%.",
+        "status": "pending",
+        "created_at": "2026-10-01T18:03:46.549122+00:00"
+      }
+    },
+    {
+      "status": "pending",
+      "created_at": "2026-10-01T18:04:19.610403+00:00",
+      "opportunity": {
+        "deal": {
+          "product_description": "This Dell Pro Max laptop features a 16-inch touchscreen display with 1920x1200 resolution and an Intel Core Ultra 9 285H processor running at 2.9 GHz. It is equipped with 64GB of RAM and a 1TB SSD storage capacity, powered by Intel Arc integrated graphics. The system runs Windows 11 Pro and includes two Thunderbolt 4 ports, two USB 3.2 ports, and a backlit keyboard, backed by a 3-year Dell warranty.",
+          "price": 1980.0,
+          "url": "https://www.dealnews.com/Refurb-Dell-Pro-Max-Core-Ultra-9-285-H-16-Laptop-for-1-980-for-new-customers-free-shipping-w-Prime/22231914.html?iref=rss-c142",
+          "category": "Computers",
+          "brand": "Dell",
+          "condition": "Refurbished",
+          "image_url": ""
+        },
+        "estimate": 1865.9628051757813,
+        "discount": -114.03719482421866,
+        "model_estimates": {
+          "specialist": 2899.0,
+          "frontier_rag": 1899.0,
+          "neural_network": 568.6280517578125
+        },
+        "confidence": 0.5398159659869297,
+        "confidence_low": 1416.1455789102713,
+        "confidence_high": 2315.7800314412916,
+        "evidence": [
+          {
+            "id": "doc_352128",
+            "description": "Title: Dell Latitude 7400 14\" Touchscreen Laptop  \nCategory: Electronics  \nBrand: Dell  \nDescription: A slim, high‑performance 14‑inch laptop with an Intel Core i7‑8665U processor, 16 GB RAM, and 256 GB SSD, running Windows 11 Pro.  \nDetails: Features a full‑HD touchscreen display, Intel UHD Graphics 620, multiple USB ports including Thunderbolt 3, and Wi‑Fi connectivity.",
+            "price": 465.9,
+            "category": "Electronics",
+            "score": 7.34699010848999
+          },
+          {
+            "id": "doc_491572",
+            "description": "Title: Dell Inspiron 15\" Business Touchscreen Laptop  \nCategory: Electronics  \nBrand: Dell  \nDescription: Powerful 15.6\" FHD touchscreen laptop with Intel Core i5, 16 GB RAM, and 1 TB SSD, running Windows 10 Pro.  \nDetails: Features integrated Intel graphics, Wi‑Fi, Bluetooth, media card reader, and a slim 0.8 in chassis for mobile productivity.",
+            "price": 795.06,
+            "category": "Electronics",
+            "score": 7.149848461151123
+          },
+          {
+            "id": "doc_525242",
+            "description": "Title: Dell Latitude 7480 Business UltraBook  \nCategory: Electronics  \nBrand: Dell  \nDescription: 14‑inch touchscreen business laptop with Windows 10 Pro.  \nDetails: Equipped with a 2.6 GHz Intel Core i5‑7300U, 16 GB DDR4 RAM, 256 GB SSD, Intel HD 620 graphics, Bluetooth, webcam, and a lightweight 3.01‑lb chassis.",
+            "price": 269.98,
+            "category": "Electronics",
+            "score": 7.033445358276367
+          },
+          {
+            "id": "doc_307418",
+            "description": "Title: Dell Inspiron 15 Touchscreen Laptop  \nCategory: Electronics  \nBrand: Dell  \nDescription: 15.6‑inch Full HD touchscreen laptop with 2 GHz Intel Core i7‑4510U, 16 GB DDR3L RAM, and 1 TB HDD.  \nDetails: Features integrated Intel HD Graphics 4400, Wi‑Fi 802.11ac, Bluetooth 4.0, and Windows 8.1 (64‑bit).",
+            "price": 399.89,
+            "category": "Electronics",
+            "score": 6.942159652709961
+          },
+          {
+            "id": "doc_271199",
+            "description": "Title: Dell XPS 13 9360 – 13.3” QHD+ Touchscreen Laptop  \nCategory: Electronics  \nBrand: Dell  \nDescription: A high‑performance, silver 13.3” QHD+ touch‑screen laptop with an 8th‑Gen Intel Core i7‑8550U processor and 16 GB RAM.  \nDetails: Equipped with a 512 GB NVMe SSD, Intel UHD Graphics 620, 60 Wh battery, backlit keyboard, fingerprint reader, and Thunderbolt 3/USB‑C connectivity.",
+            "price": 899.0,
+            "category": "Electronics",
+            "score": 6.923566818237305
+          }
+        ],
+        "explanation": "Weighted estimate from three models ($569–$2,899); 5 retrieved comparables; model agreement 39%.",
+        "status": "pending",
+        "created_at": "2026-10-01T18:04:19.610403+00:00"
+      }
+    },
+    {
+      "status": "pending",
+      "created_at": "2026-10-01T18:04:53.772337+00:00",
+      "opportunity": {
+        "deal": {
+          "product_description": "The Busy Bar is a customizable productivity tool and desk status sign that automatically displays 'Busy' during calls or when specific apps are open. It integrates an RGB LED pixel display (6.35 inches, 72x16 pixels, 800 nits) with open-source firmware and SDKs. The device includes a built-in Pomodoro-style focus timer, mutes notifications on connected devices, and features physical tactile controls for mode selection.",
+          "price": 159.2,
+          "url": "https://www.dealnews.com/Busy-Bar-Customizable-Pixel-LED-Display-and-Productivity-Tool-for-159-20-15-shipping/22232124.html?iref=rss-c142",
+          "category": "Electronics",
+          "brand": "BUSY",
+          "condition": "New",
+          "image_url": ""
+        },
+        "estimate": 89.98316650390626,
+        "discount": -69.21683349609373,
+        "model_estimates": {
+          "specialist": 149.0,
+          "frontier_rag": 79.0,
+          "neural_network": 118.8316650390625
+        },
+        "confidence": 0.779099283079379,
+        "confidence_low": 75.82744208656858,
+        "confidence_high": 104.13889092124394,
+        "evidence": [
+          {
+            "id": "doc_131551",
+            "description": "Title: BusyBox R RF Remote Sign  \nCategory: Home & Office Electronics  \nBrand: BusyBox  \nDescription: A simple, wall‑mounted RF remote sign that lets you signal “busy” without a smartphone.  \nDetails: Features a 10‑LED RGB display with 300+ preset modes, slide‑in messages, a 2,500 mAh rechargeable battery, and easy wall mounting with command strips.",
+            "price": 49.0,
+            "category": "Office_Products",
+            "score": 3.570481061935425
+          },
+          {
+            "id": "doc_615517",
+            "description": "Title: Luxafor Bluetooth LED Busy Light  \nCategory: Office Electronics  \nBrand: Luxafor  \nDescription: A portable wireless LED indicator that displays your status in meetings or at your desk.  \nDetails: Features up to 25 m Bluetooth range, customizable colors, battery life up to 6 months, and integration with Slack, Trello, and email.",
+            "price": 94.99,
+            "category": "Electronics",
+            "score": 3.0324511528015137
+          },
+          {
+            "id": "doc_664738",
+            "description": "Title: Luxafor Flag LED USB Busy Light Indicator – Black  \nCategory: Electronics  \nBrand: SIA Greynut  \nDescription: A compact, magnetic LED indicator that displays your availability status via customizable colors, eliminating distractions and boosting productivity.  \nDetails: Powered by USB‑C with a 20‑inch cable, it offers battery‑free operation, free Mac/PC software, and seamless integration with popular productivity tools.",
+            "price": 39.99,
+            "category": "Electronics",
+            "score": 2.332946300506592
+          },
+          {
+            "id": "doc_24035",
+            "description": "Title: Neon LED Bar Open Sign  \nCategory: Electronics  \nBrand: CHENXI  \nDescription: A bright LED neon sign declaring \"Open\" for bars, pubs, and restaurants.  \nDetails: 19×10 in (48×25 cm) light‑weight display with a 3‑8 W power consumption, includes on/off switch and hanging chain for easy installation.",
+            "price": 30.78,
+            "category": "Tools_and_Home_Improvement",
+            "score": 2.0562405586242676
+          },
+          {
+            "id": "doc_695437",
+            "description": "Title: Blynclight Plus – Office Busy Light with Ringer  \nCategory: Electronics  \nBrand: Embrava  \nDescription: A compact LED light that signals your availability to colleagues while also delivering audible ringtones for incoming calls and messages.  \nDetails: Configurable color and brightness, supports major collaboration platforms (Microsoft Teams, Skype, Cisco Jabber, Ringcentral, etc.), and offers an SDK for custom application alerts.",
+            "price": 44.95,
+            "category": "Office_Products",
+            "score": 1.8965423107147217
+          }
+        ],
+        "explanation": "Weighted estimate from three models ($79–$149); 5 retrieved comparables; model agreement 71%.",
+        "status": "pending",
+        "created_at": "2026-10-01T18:04:53.772337+00:00"
+      }
+    },
+    {
+      "status": "pending",
+      "created_at": "2026-10-01T18:05:26.478067+00:00",
+      "opportunity": {
+        "deal": {
+          "product_description": "The Lenovo ThinkPad T14 is a 14-inch business laptop featuring an Intel Core Ultra 7 155U processor with turbo speeds up to 4.8GHz. It comes with 32GB of DDR5 RAM and a 1TB PCIe NVMe SSD, paired with a 1920x1200 WUXGA IPS anti-glare display at 400 nits. The device includes a fingerprint reader, backlit keyboard, Wi-Fi 6, Bluetooth 5.3, and runs Windows 11 Pro.",
+          "price": 1339.0,
+          "url": "https://www.dealnews.com/Lenovo-Think-Pad-T14-Core-Ultra-7-155-U-14-Laptop-for-1-339-free-shipping/22231906.html?iref=rss-c142",
+          "category": "Computers",
+          "brand": "Lenovo",
+          "condition": "New",
+          "image_url": ""
+        },
+        "estimate": 1246.6671936035157,
+        "discount": -92.33280639648433,
+        "model_estimates": {
+          "specialist": 1499.0,
+          "frontier_rag": 1299.0,
+          "neural_network": 575.6719360351562
+        },
+        "confidence": 0.7334503279547218,
+        "confidence_low": 1030.6292620536158,
+        "confidence_high": 1462.7051251534156,
+        "evidence": [
+          {
+            "id": "doc_794952",
+            "description": "Title: Lenovo ThinkPad T14 Business Laptop  \nCategory: Electronics  \nBrand: Lenovo  \nDescription: A 14‑inch, FHD ThinkPad T14 powered by an 11th‑gen Intel Core i5, 16 GB RAM, and a 512 GB SSD, running Windows 11 Pro for seamless business productivity.  \nDetails: Features an IPS anti‑glare display, Wi‑Fi 6, Bluetooth 5.2, HDMI, dual USB‑C Thunderbolt 4, fingerprint reader, and backlit keyboard, delivering robust performance and secure, long‑lasting battery life.",
+            "price": 699.0,
+            "category": "Electronics",
+            "score": 8.204877853393555
+          },
+          {
+            "id": "doc_554882",
+            "description": "Title: Lenovo ThinkPad T450 14\" Business Ultrabook  \nCategory: Electronics  \nBrand: Lenovo  \nDescription: 14‑inch ThinkPad T450 with Intel Core i5‑4300U, 8 GB DDR3, 500 GB 7200 RPM HDD, fingerprint reader, Bluetooth, Windows 7 Professional (upgradable).  \nDetails: Full‑sized, spill‑resistant keyboard, HD 1366×768 display, Intel HD Graphics 4400, Wi‑Fi 802.11b/g/n, 3.81‑lb chassis.",
+            "price": 150.0,
+            "category": "Electronics",
+            "score": 8.072948455810547
+          },
+          {
+            "id": "doc_142699",
+            "description": "Title: Lenovo ThinkPad T14 Gen 2 – 14\" FHD Business Laptop  \nCategory: Electronics  \nBrand: Lenovo  \nDescription: 14‑inch ThinkPad T14 Gen 2 delivers a powerful 11th‑Gen Intel i7 processor, 16 GB DDR4, and 1 TB PCIe SSD for business performance.  \nDetails: Features Wi‑Fi 6, Bluetooth 5.1, backlit keyboard, fingerprint reader, Windows 11 Pro, and a bundled BROAG USB Extension Cable.",
+            "price": 919.0,
+            "category": "Electronics",
+            "score": 7.9180402755737305
+          },
+          {
+            "id": "doc_174735",
+            "description": "Title: Lenovo ThinkPad T14 Gen 2 14\" FHD Laptop  \nCategory: Electronics  \nBrand: Lenovo  \nDescription: A 14‑inch business laptop with Intel i5‑1135G7, 16 GB RAM, and 512 GB SSD running Windows 11 Pro.  \nDetails: Features a 1920×1080 IPS display, backlit keyboard, fingerprint reader, two Thunderbolt 4 ports, HDMI 2.0, Wi‑Fi 6, and a 3‑year warranty.",
+            "price": 849.98,
+            "category": "Electronics",
+            "score": 7.909943580627441
+          },
+          {
+            "id": "doc_53674",
+            "description": "Title: Lenovo ThinkPad T14 Gen 3 14″ Business Laptop  \nCategory: Electronics  \nBrand: Lenovo  \nDescription: Powerful 14‑inch business laptop with AMD Ryzen 5 Pro 6650U, 16 GB DDR5 RAM, 1 TB SSD and Windows 11 Pro.  \nDetails: Features a backlit keyboard, fingerprint reader, WUXGA display, integrated Radeon 660M GPU, dual USB‑C with Power Delivery and DisplayPort, Wi‑Fi 6E, 3‑year warranty.",
+            "price": 849.98,
+            "category": "Electronics",
+            "score": 7.790115833282471
+          }
+        ],
+        "explanation": "Weighted estimate from three models ($576–$1,499); 5 retrieved comparables; model agreement 64%.",
+        "status": "pending",
+        "created_at": "2026-10-01T18:05:26.478067+00:00"
+      }
+    },
+    {
+      "status": "pending",
+      "created_at": "2026-10-01T18:05:58.707174+00:00",
+      "opportunity": {
+        "deal": {
+          "product_description": "The Govee 180ft Permanent Outdoor Lights Elite set provides 180 feet of RGBIC LED string lighting with a triangular light effect. The lights are IP67 water-resistant and made from anti-UV outdoor-rated material. They can be controlled via the Govee Home App, voice assistants, or Matter-enabled smart home systems, and include a control box, power adapter, extension cables, and 114 clips for installation.",
+          "price": 280.0,
+          "url": "https://www.dealnews.com/Govee-180-ft-Permanent-Outdoor-Lights-Elite-for-280-free-shipping/22226883.html?iref=rss-f1912",
+          "category": "Home & Garden",
+          "brand": "Govee",
+          "condition": "New",
+          "image_url": ""
+        },
+        "estimate": 138.16049310302736,
+        "discount": -141.83950689697264,
+        "model_estimates": {
+          "specialist": 99.99,
+          "frontier_rag": 149.99,
+          "neural_network": 81.69493103027344
+        },
+        "confidence": 0.7438678781513404,
+        "confidence_low": 114.72208456583775,
+        "confidence_high": 161.59890164021698,
+        "evidence": [
+          {
+            "id": "doc_743918",
+            "description": "Title: Govee Smart RGBIC Outdoor String Lights  \nCategory: Electronics  \nBrand: Govee  \nDescription: 48 ft of waterproof LED string lights that change color, dim, and sync to music.  \nDetails: Controlled via Wi‑Fi or Bluetooth app and Alexa/Google Assistant, with 16 million colors, 47 scenes, and IP65 weather resistance.",
+            "price": 69.99,
+            "category": "Tools_and_Home_Improvement",
+            "score": 6.678981781005859
+          },
+          {
+            "id": "doc_274383",
+            "description": "Title: Govee Waterproof Outdoor RGBIC LED Strip Lights  \nCategory: Electronics  \nBrand: Govee  \nDescription: 32.8ft smart LED rope lights with RGBIC color control, Bluetooth app operation, and IP65 waterproof rating for outdoor décor.  \nDetails: Features 16 million colors, music‑sync capability, adhesive backing, and a 36‑W power supply.",
+            "price": 69.99,
+            "category": "Tools_and_Home_Improvement",
+            "score": 6.244254112243652
+          },
+          {
+            "id": "doc_96665",
+            "description": "Title: Govee WiFi RGBIC Outdoor LED Rope Lights  \nCategory: Electronics  \nBrand: Govee  \nDescription: Waterproof 65.6‑ft RGBIC LED rope lights that sync to music and can be controlled via Alexa, Google Assistant, or the Govee Home app.  \nDetails: Each 32.8‑ft rope contains 480 independent LEDs, supports 16 million colors, 64 preset scenes, and is IP65‑rated for outdoor use.",
+            "price": 129.99,
+            "category": "Tools_and_Home_Improvement",
+            "score": 6.154881477355957
+          },
+          {
+            "id": "doc_46750",
+            "description": "Title: Govee RGBIC Smart Outdoor Eaves Lights  \nCategory: Electronics  \nBrand: Govee  \nDescription: Waterproof LED strip lights for outdoor décor with 73 programmable scenes and Alexa/Google Assistant voice control.  \nDetails: 36 RGBIC LEDs, 50 ft length, IP67 rated, energy‑efficient, 50,000‑hour lifespan.",
+            "price": 199.99,
+            "category": "Tools_and_Home_Improvement",
+            "score": 6.13258171081543
+          },
+          {
+            "id": "doc_264441",
+            "description": "Title: Govee 96ft Outdoor WiFi LED String Lights  \nCategory: Electronics  \nBrand: Govee  \nDescription: 30 dimmable warm‑white LED bulbs in a 96‑ft waterproof string that can be controlled via Alexa, Google Assistant, or the Govee Home app.  \nDetails: Each bulb consumes only 0.8 W, lasts 20,000 hours, and the IP65-rated housings protect against rain, wind, and sun.",
+            "price": 79.99,
+            "category": "Tools_and_Home_Improvement",
+            "score": 5.977349281311035
+          }
+        ],
+        "explanation": "Weighted estimate from three models ($82–$150); 5 retrieved comparables; model agreement 66%.",
+        "status": "pending",
+        "created_at": "2026-10-01T18:05:58.707174+00:00"
+      }
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 from pricer.config import Settings
 from typing import List, Dict
@@ -6,7 +7,7 @@ from litellm import completion
 from sentence_transformers import SentenceTransformer
 from pricer.agents.agent import Agent
 from pricer.agents.llm_provider import api_base, api_key, model_name as provider_model
-from pricer.agents.guardrails import extract_single_price
+from pricer.agents.guardrails import extract_single_price, validate_price
 from pricer.agents.retrieval import (
     CrossEncoderReranker,
     RetrievalCandidate,
@@ -140,11 +141,25 @@ class FrontierAgent(Agent):
             if lexical:
                 rankings.append(lexical)
         fused = reciprocal_rank_fusion(rankings)
-        reranked = rerank(description, fused, self.reranker)
+        priced_candidates = []
+        invalid_price_count = 0
+        for candidate in fused:
+            try:
+                validate_price(candidate.metadata.get("price"))
+            except (TypeError, ValueError):
+                invalid_price_count += 1
+                continue
+            priced_candidates.append(candidate)
+        if invalid_price_count:
+            logging.warning(
+                "Skipping %d retrieved products with missing or invalid prices",
+                invalid_price_count,
+            )
+        reranked = rerank(description, priced_candidates, self.reranker)
         result = RetrievalResult(
             candidates=reranked[: self.result_count],
-            used_hybrid=any(item.lexical_rank is not None for item in fused),
-            reranked=self.reranker is not None,
+            used_hybrid=any(item.lexical_rank is not None for item in priced_candidates),
+            reranked=any(item.reranker_score is not None for item in reranked),
         )
         self.last_retrieval = result
         return result

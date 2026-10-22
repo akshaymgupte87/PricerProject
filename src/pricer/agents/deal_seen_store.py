@@ -26,7 +26,10 @@ def canonicalize_url(url: str) -> str:
     parts = urlsplit(value)
     scheme = parts.scheme.lower()
     hostname = (parts.hostname or "").lower()
-    port = parts.port
+    try:
+        port = parts.port
+    except ValueError as error:
+        raise ValueError("URL has an invalid port") from error
     if port and not ((scheme == "http" and port == 80) or (scheme == "https" and port == 443)):
         hostname = f"{hostname}:{port}"
 
@@ -71,8 +74,13 @@ class DealSeenStore:
         if not ids:
             return []
 
-        existing = set(self.collection.get(ids=ids, include=[])["ids"])
-        return [deal for identifier, deal in unique_by_id.items() if identifier not in existing]
+        records = self.collection.get(ids=ids, include=["metadatas"])
+        terminal = {
+            identifier
+            for identifier, metadata in zip(records["ids"], records["metadatas"])
+            if (metadata or {}).get("status") in {"rejected", "priced"}
+        }
+        return [deal for identifier, deal in unique_by_id.items() if identifier not in terminal]
 
     def mark_processed(self, deals, selected_deals) -> None:
         """Persist all candidates once their scanner response has been validated."""
@@ -99,7 +107,7 @@ class DealSeenStore:
                     "original_url": deal.url,
                     "title": str(getattr(deal, "title", ""))[:500],
                     "selected": selected,
-                    "status": "selected" if selected else "rejected",
+                    "status": "pending" if selected else "rejected",
                     "first_seen_at": observed_at,
                 }
             )
@@ -109,3 +117,13 @@ class DealSeenStore:
             embeddings=embeddings,
             metadatas=metadatas,
         )
+
+    def mark_priced(self, deal) -> None:
+        """Mark a selected deal terminal after its priced opportunity is persisted."""
+        identifier = deal_id(deal.url)
+        records = self.collection.get(ids=[identifier], include=["metadatas"])
+        if not records["ids"]:
+            return
+        metadata = dict(records["metadatas"][0] or {})
+        metadata["status"] = "priced"
+        self.collection.update(ids=[identifier], metadatas=[metadata])

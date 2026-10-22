@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -12,9 +12,11 @@ from pricer.agents.guardrails import PriceGuardrailError, extract_single_price
 from pricer.agents.planning_agent import PlanningAgent
 from pricer.agents.rag_judge import RAGJudge, RAGJudgement
 from pricer.agents.retrieval import (
+    CrossEncoderReranker,
     RetrievalCandidate,
     SQLiteBM25Index,
     reciprocal_rank_fusion,
+    rerank,
     retrieval_metrics,
 )
 
@@ -100,6 +102,40 @@ class HybridRetrievalTests(unittest.TestCase):
         self.assertTrue(result.used_hybrid)
         self.assertTrue(result.reranked)
         self.assertEqual(result.candidates[0].id, "exact")
+
+    def test_invalid_retrieved_prices_are_skipped_without_failing_the_query(self):
+        collection = FakeCollection(
+            [
+                ("valid", "A valid comparable laptop", {"price": 500}),
+                ("invalid", "A record missing its price", {}),
+            ]
+        )
+        agent = FrontierAgent(
+            collection,
+            encoder=Mock(encode=Mock(return_value=np.array([[0.1, 0.2]]))),
+            lexical_index=Mock(search=Mock(return_value=[])),
+            candidate_reranker=Mock(score=Mock(return_value=None)),
+            candidate_count=2,
+            result_count=2,
+        )
+
+        result = agent.retrieve("laptop")
+
+        self.assertEqual([item.id for item in result.candidates], ["valid"])
+        self.assertFalse(result.reranked)
+
+    def test_unavailable_cross_encoder_falls_back_to_fused_order(self):
+        candidates = [
+            RetrievalCandidate("first", "First", fusion_score=0.4),
+            RetrievalCandidate("second", "Second", fusion_score=0.2),
+        ]
+        with patch(
+            "sentence_transformers.CrossEncoder", side_effect=OSError("model unavailable")
+        ):
+            result = rerank("product", candidates, CrossEncoderReranker("missing-model"))
+
+        self.assertEqual([item.id for item in result], ["first", "second"])
+        self.assertTrue(all(item.reranker_score is None for item in result))
 
     def test_retrieval_metrics_are_objective_and_bounded(self):
         metrics = retrieval_metrics(["a", "b", "c"], {"b", "x"}, k=3)

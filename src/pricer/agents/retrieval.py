@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
 import sqlite3
@@ -77,16 +78,38 @@ class CrossEncoderReranker:
     def __init__(self, model_name: str):
         self.model_name = model_name
         self._model = None
+        self._load_attempted = False
 
-    def score(self, query: str, documents: Sequence[str]) -> Sequence[float]:
+    def score(self, query: str, documents: Sequence[str]) -> Sequence[float] | None:
         if not documents:
             return []
         if self._model is None:
-            from sentence_transformers import CrossEncoder
+            if self._load_attempted:
+                return None
+            self._load_attempted = True
+            try:
+                from sentence_transformers import CrossEncoder
 
-            self._model = CrossEncoder(self.model_name)
-        pairs = [(query, document) for document in documents]
-        return [float(value) for value in self._model.predict(pairs)]
+                self._model = CrossEncoder(self.model_name)
+            except Exception:
+                logging.warning(
+                    "Could not load reranker %s; using reciprocal-rank fusion order",
+                    self.model_name,
+                    exc_info=True,
+                )
+                return None
+        try:
+            pairs = [(query, document) for document in documents]
+            return [float(value) for value in self._model.predict(pairs)]
+        except Exception:
+            logging.warning(
+                "Reranker %s failed; using reciprocal-rank fusion order",
+                self.model_name,
+                exc_info=True,
+            )
+            self._model = None
+            self._load_attempted = True
+            return None
 
 
 def reciprocal_rank_fusion(
@@ -124,7 +147,10 @@ def rerank(
 ) -> list[RetrievalCandidate]:
     if reranker is None or not candidates:
         return list(candidates)
-    scores = list(reranker.score(query, [item.document for item in candidates]))
+    raw_scores = reranker.score(query, [item.document for item in candidates])
+    if raw_scores is None:
+        return list(candidates)
+    scores = list(raw_scores)
     if len(scores) != len(candidates):
         raise ValueError("reranker returned a different number of scores than candidates")
     result = list(candidates)

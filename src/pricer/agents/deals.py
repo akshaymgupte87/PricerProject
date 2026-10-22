@@ -1,14 +1,60 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Self, Literal
 from bs4 import BeautifulSoup
+import ipaddress
+import logging
 import re
 import feedparser
 from tqdm import tqdm
 import requests
 import time
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from pricer.agents.guardrails import validate_price
+
+
+def validate_public_http_url(value: str) -> str:
+    """Reject malformed URLs and obvious local/private targets before fetching."""
+    parsed = urlparse(value)
+    try:
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError as error:
+        raise ValueError("URL has an invalid host or port") from error
+    if (parsed.scheme not in {"http", "https"} or not hostname
+            or parsed.username is not None or parsed.password is not None):
+        raise ValueError("URL must be an absolute public HTTP(S) URL")
+    if port is not None and not 1 <= port <= 65535:
+        raise ValueError("URL port must be between 1 and 65535")
+    host = hostname.rstrip(".").lower()
+    if host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
+        raise ValueError("URL host must not be local")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    if address is not None and not address.is_global:
+        raise ValueError("URL host must be a public IP address")
+    return value
+
+
+def get_public_url(url: str, *, timeout: tuple[int, int] = (5, 15)):
+    """Fetch a URL while validating every redirect destination before requesting it."""
+    current = url
+    for redirect_count in range(6):
+        validate_public_http_url(current)
+        response = requests.get(current, timeout=timeout, allow_redirects=False)
+        if 300 <= response.status_code < 400:
+            location = response.headers.get("Location")
+            if not location:
+                raise ValueError("redirect response did not include a Location")
+            if redirect_count == 5:
+                raise requests.TooManyRedirects("too many redirects while fetching public URL")
+            current = urljoin(current, location)
+            continue
+        response.raise_for_status()
+        return response
+    raise requests.TooManyRedirects("too many redirects while fetching public URL")
 
 feeds = [
     "https://www.dealnews.com/c142/Electronics/?rss=1",
@@ -33,7 +79,7 @@ def extract(html_snippet: str) -> str:
         description = re.sub("<[^<]+?>", "", description)
         result = description.strip()
     else:
-        result = html_snippet
+        result = soup.get_text(" ", strip=True)
     return result.replace("\n", " ")
 
 
@@ -56,9 +102,13 @@ class ScrapedDeal:
         self.title = entry["title"]
         self.summary = extract(entry["summary"])
         self.url = entry["links"][0]["href"]
-        stuff = requests.get(self.url).content
+        response = get_public_url(self.url)
+        stuff = response.content
         soup = BeautifulSoup(stuff, "html.parser")
-        content = soup.find("div", class_="content-section").get_text()
+        content_section = soup.find("div", class_="content-section")
+        # Deal sites change their markup. Keep the RSS summary usable when the
+        # detail container disappears instead of crashing the whole feed scan.
+        content = content_section.get_text() if content_section else self.summary
         content = content.replace("\nmore", "").replace("\n", " ")
         if "Features" in content:
             self.details, self.features = content.split("Features", 1)
@@ -95,10 +145,19 @@ class ScrapedDeal:
         deals = []
         feed_iter = tqdm(feeds) if show_progress else feeds
         for feed_url in feed_iter:
-            feed = feedparser.parse(feed_url)
+            try:
+                response = get_public_url(feed_url)
+                feed = feedparser.parse(response.content)
+            except Exception:
+                logging.warning("Could not retrieve RSS feed %s", feed_url, exc_info=True)
+                continue
             for entry in feed.entries[:10]:
-                deals.append(cls(entry))
-                time.sleep(0.05)
+                try:
+                    deals.append(cls(entry))
+                except Exception:
+                    logging.warning("Skipping unreadable deal from %s", feed_url, exc_info=True)
+                else:
+                    time.sleep(0.05)
         return deals
 
 
@@ -135,10 +194,7 @@ class Deal(BaseModel):
     @field_validator("url")
     @classmethod
     def validate_deal_url(cls, value: str) -> str:
-        parsed = urlparse(value)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ValueError("deal URL must be an absolute HTTP(S) URL")
-        return value
+        return validate_public_http_url(value)
 
 
 class DealSelection(BaseModel):

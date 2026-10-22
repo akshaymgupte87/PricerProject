@@ -4,6 +4,7 @@ from litellm import completion
 from pricer.agents.deals import ScrapedDeal, DealSelection
 from pricer.agents.agent import Agent
 from pricer.agents.deal_seen_store import DealSeenStore
+from pricer.agents.deal_seen_store import canonicalize_url
 from pricer.agents.llm_provider import api_base, api_key, model_name as provider_model
 
 
@@ -68,9 +69,11 @@ class ScannerAgent(Agent):
         Return any new deals that are not already in the memory provided
         """
         self.log("Scanner Agent is about to fetch deals from RSS feed")
-        urls = [opp.deal.url for opp in memory]
+        urls = {canonicalize_url(opp.deal.url) for opp in memory}
         scraped = ScrapedDeal.fetch()
-        result = [scrape for scrape in scraped if scrape.url not in urls]
+        result = [
+            scrape for scrape in scraped if canonicalize_url(scrape.url) not in urls
+        ]
         if self.seen_store:
             result = self.seen_store.unseen(result)
         self.log(f"Scanner Agent received {len(result)} unseen deals")
@@ -108,7 +111,14 @@ class ScannerAgent(Agent):
                 think=False,
             )
             result = parse_deal_selection(response.choices[0].message.content)
-            result.deals = [deal for deal in result.deals if deal.price > 0]
+            candidates = {canonicalize_url(item.url): item.url for item in scraped}
+            valid_deals = []
+            for deal in result.deals:
+                candidate_url = candidates.get(canonicalize_url(deal.url))
+                if deal.price > 0 and candidate_url:
+                    deal.url = candidate_url
+                    valid_deals.append(deal)
+            result.deals = valid_deals
             if self.seen_store:
                 self.seen_store.mark_processed(scraped, result.deals)
             self.log(

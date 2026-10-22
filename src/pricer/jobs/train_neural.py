@@ -137,7 +137,9 @@ def evaluate(model, loader, device, target_mean: float, target_std: float) -> fl
             true_prices = torch.expm1(targets * target_std + target_mean).clamp_min(0)
             absolute_error += torch.abs(predicted_prices - true_prices).sum().item()
             examples += len(features)
-    return absolute_error / max(examples, 1)
+    if examples == 0:
+        raise ValueError("validation loader produced no examples")
+    return absolute_error / examples
 
 
 def parse_args():
@@ -208,6 +210,10 @@ def main():
         for item in validation_items
         if item.summary and math.isfinite(item.price) and item.price >= 0
     ]
+    if not train_items:
+        raise ValueError("training split contains no valid labeled examples")
+    if not validation_items:
+        raise ValueError("validation split contains no valid labeled examples")
     log_prices = np.log1p(np.asarray([item.price for item in train_items], dtype=np.float64))
     target_mean = float(log_prices.mean())
     target_std = float(log_prices.std())

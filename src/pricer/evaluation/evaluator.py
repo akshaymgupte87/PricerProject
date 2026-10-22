@@ -222,6 +222,13 @@ class Tester:
         self.chart(title)
 
     def run(self):
+        if self.size <= 0:
+            raise ValueError("evaluation size must be positive")
+        available = len(self.data)
+        if self.size > available:
+            raise ValueError(
+                f"requested {self.size} evaluation examples but dataset has only {available}"
+            )
         with ThreadPoolExecutor(max_workers=self.workers) as ex:
             for title, guess, truth, error, color in tqdm(
                 ex.map(self.run_datapoint, range(self.size)), total=self.size

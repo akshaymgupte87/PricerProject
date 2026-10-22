@@ -8,6 +8,7 @@ from typing import Any, TypedDict
 from pricer.agents.deals import Deal, Opportunity
 from pricer.agents.ensemble_agent import EnsembleAgent
 from pricer.persistence.intelligence_store import IntelligenceStore
+from pricer.agents.messaging_agent import MessagingAgent
 
 
 class DealGraphState(TypedDict, total=False):
@@ -132,6 +133,14 @@ class DealStateGraph:
             corrected_price=corrected_price,
             reason=reason,
         )
+        if decision == "approved" and self.store.claim_alert_delivery(updated.deal.url):
+            try:
+                MessagingAgent().alert(updated)
+            except Exception as error:
+                self.store.finish_alert_delivery(updated.deal.url, error=str(error))
+                raise
+            else:
+                self.store.finish_alert_delivery(updated.deal.url)
         state["opportunity"] = updated.model_dump()
         state["status"] = decision
         self.store.save_checkpoint(run_id, state)

@@ -81,7 +81,20 @@ class ScannerDeduplicationTests(unittest.TestCase):
         collection = client.get_or_create_collection(f"seen_{uuid.uuid4().hex}")
         return DealSeenStore(collection), collection
 
-    def test_successful_scan_marks_selected_and_rejected_candidates(self):
+    def test_memory_dedup_uses_canonical_urls(self):
+        candidate = scraped_deal("https://example.com/deal?utm_source=rss")
+        agent = ScannerAgent()
+
+        with patch(
+            "pricer.agents.scanner_agent.ScrapedDeal.fetch", return_value=[candidate]
+        ):
+            result = agent.fetch_deals(
+                [opportunity("deal", 100, 150)]
+            )
+
+        self.assertEqual(result, [])
+
+    def test_selected_candidates_are_retryable_until_priced_and_rejections_stay_suppressed(self):
         store, collection = self.make_store()
         selected = scraped_deal("https://example.com/selected?iref=rss", "Selected")
         rejected = scraped_deal("https://example.com/rejected", "Rejected")
@@ -93,13 +106,16 @@ class ScannerDeduplicationTests(unittest.TestCase):
         ) as completion:
             first = agent.scan(memory=[])
             second = agent.scan(memory=[])
+            store.mark_priced(first.deals[0])
+            third = agent.scan(memory=[])
 
         records = collection.get(include=["metadatas"])["metadatas"]
         statuses = {record["status"] for record in records}
         self.assertEqual(len(first.deals), 1)
-        self.assertIsNone(second)
-        self.assertEqual(completion.call_count, 1)
-        self.assertEqual(statuses, {"selected", "rejected"})
+        self.assertEqual(len(second.deals), 1)
+        self.assertIsNone(third)
+        self.assertEqual(completion.call_count, 2)
+        self.assertEqual(statuses, {"priced", "rejected"})
 
     def test_failed_scanner_call_does_not_poison_retry(self):
         store, collection = self.make_store()
@@ -215,7 +231,10 @@ class PlanningProgressTests(unittest.TestCase):
 class FrameworkPersistenceTests(unittest.TestCase):
     def make_framework(self, memory_path: Path) -> DealAgentFramework:
         with patch("pricer.application.framework.chromadb.PersistentClient") as client:
-            client.return_value.get_or_create_collection.return_value = object()
+            client.return_value.get_or_create_collection.side_effect = [
+                object(),
+                Mock(get=Mock(return_value={"ids": [], "metadatas": []})),
+            ]
             return DealAgentFramework(db_path=memory_path.parent / "db", memory_path=memory_path)
 
     def test_loads_saved_rows_and_writes_valid_deduplicated_memory(self):

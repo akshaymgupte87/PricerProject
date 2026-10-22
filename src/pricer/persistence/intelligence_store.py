@@ -86,6 +86,12 @@ class IntelligenceStore:
             state TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS alert_deliveries (
+            url TEXT PRIMARY KEY,
+            status TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            error TEXT NOT NULL DEFAULT ''
+        );
         """
         with self._lock, closing(self.connect()) as connection:
             connection.executescript(schema)
@@ -321,6 +327,10 @@ class IntelligenceStore:
         }
 
     def save_search(self, name: str, query: str, filters: dict[str, Any] | None = None) -> int:
+        name = name.strip()
+        query = query.strip()
+        if not name or not query:
+            raise ValueError("saved search name and query must not be empty")
         now = utc_now()
         with self._lock, closing(self.connect()) as connection:
             cursor = connection.execute(
@@ -328,7 +338,7 @@ class IntelligenceStore:
                    VALUES (?, ?, ?, ?)
                    ON CONFLICT(name) DO UPDATE SET query=excluded.query,
                        filters=excluded.filters, enabled=1""",
-                (name.strip(), query.strip(), json.dumps(filters or {}), now),
+                (name, query, json.dumps(filters or {}), now),
             )
             connection.commit()
             return int(cursor.lastrowid or 0)
@@ -352,6 +362,8 @@ class IntelligenceStore:
         if row is None:
             raise KeyError(f"unknown saved search: {identifier}")
         terms = [term.casefold() for term in str(row["query"]).split() if term]
+        if not terms:
+            raise ValueError("saved search query must not be empty")
         filters = json.loads(row["filters"])
         matches = []
         for opportunity in self.list_opportunities():
@@ -366,6 +378,41 @@ class IntelligenceStore:
                 continue
             matches.append(opportunity)
         return matches
+
+    def claim_alert_delivery(self, url: str) -> bool:
+        """Claim an approved alert unless it has already been delivered."""
+        canonical = canonicalize_url(url)
+        with self._lock, closing(self.connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT status, updated_at FROM alert_deliveries WHERE url = ?", (canonical,)
+            ).fetchone()
+            if row:
+                if row["status"] == "sent":
+                    connection.commit()
+                    return False
+                if row["status"] == "pending":
+                    claimed_at = datetime.fromisoformat(row["updated_at"])
+                    if (datetime.now(timezone.utc) - claimed_at).total_seconds() < 300:
+                        connection.commit()
+                        return False
+            connection.execute(
+                """INSERT INTO alert_deliveries(url, status, updated_at, error)
+                   VALUES (?, 'pending', ?, '')
+                   ON CONFLICT(url) DO UPDATE SET status='pending', updated_at=excluded.updated_at, error=''""",
+                (canonical, utc_now()),
+            )
+            connection.commit()
+            return True
+
+    def finish_alert_delivery(self, url: str, *, error: str | None = None) -> None:
+        status = "failed" if error is not None else "sent"
+        with self._lock, closing(self.connect()) as connection:
+            connection.execute(
+                "UPDATE alert_deliveries SET status=?, updated_at=?, error=? WHERE url=?",
+                (status, utc_now(), (error or "")[:1000], canonicalize_url(url)),
+            )
+            connection.commit()
 
     def metric(self, name: str, value: float, **tags: Any) -> None:
         with self._lock, closing(self.connect()) as connection:

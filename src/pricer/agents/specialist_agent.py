@@ -49,11 +49,13 @@ class SpecialistAgent(Agent):
 
     @staticmethod
     def _extract_price(reply: str) -> float:
-        cleaned = reply.replace("$", "").replace(",", "")
-        match = re.search(r"[-+]?\d*\.?\d+", cleaned)
-        if not match:
+        cleaned = reply.replace(",", "")
+        matches = re.findall(r"(?<![\w.])\$?\s*([-+]?\d+(?:\.\d{1,2})?)(?![\w.])", cleaned)
+        if not matches:
             raise ValueError(f"Local Qwen returned no numeric price: {reply!r}")
-        result = float(match.group())
+        if len(matches) != 1:
+            raise ValueError(f"Local Qwen returned an ambiguous price: {reply!r}")
+        result = float(matches[0])
         if result <= 0:
             raise ValueError(f"Local Qwen returned a non-positive price: {result}")
         return result

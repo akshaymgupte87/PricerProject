@@ -119,11 +119,11 @@ class DealAgentFramework:
 
     @staticmethod
     def _merge_opportunities(*groups: List[Opportunity]) -> List[Opportunity]:
-        """Merge snapshots by URL while retaining stable display order."""
+        """Merge snapshots by URL; earlier sources are more authoritative."""
         merged: dict[str, Opportunity] = {}
         for group in groups:
             for opportunity in group:
-                merged[opportunity.deal.url] = opportunity
+                merged.setdefault(opportunity.deal.url, opportunity)
         return list(merged.values())
 
     def display_opportunities(self) -> List[Opportunity]:
@@ -148,6 +148,7 @@ class DealAgentFramework:
                 current: List[Opportunity],
             ) -> None:
                 self.store.upsert_opportunity(_opportunity)
+                self.seen_store.mark_priced(_opportunity.deal)
                 self.current_run = current
                 if on_progress:
                     on_progress(self.display_opportunities())
@@ -178,15 +179,6 @@ class DealAgentFramework:
         reason: str = "",
     ) -> Opportunity:
         canonical_url = canonicalize_url(url)
-        existing = next(
-            (
-                opportunity
-                for opportunity in self.store.list_opportunities()
-                if canonicalize_url(opportunity.deal.url) == canonical_url
-            ),
-            None,
-        )
-        was_approved = existing is not None and existing.status == "approved"
         updated = self.store.record_feedback(
             url, decision, corrected_price=corrected_price, reason=reason
         )
@@ -194,8 +186,14 @@ class DealAgentFramework:
             if canonicalize_url(opportunity.deal.url) == canonical_url:
                 opportunity.status = decision
         self.write_memory()
-        if decision == "approved" and not was_approved:
-            MessagingAgent().alert(updated)
+        if decision == "approved" and self.store.claim_alert_delivery(updated.deal.url):
+            try:
+                MessagingAgent().alert(updated)
+            except Exception as error:
+                self.store.finish_alert_delivery(updated.deal.url, error=str(error))
+                raise
+            else:
+                self.store.finish_alert_delivery(updated.deal.url)
         return updated
 
     def price_history(self, url: str) -> list[dict]:

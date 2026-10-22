@@ -23,14 +23,14 @@ For a pricing-quality claim, prepare independent product labels that do not over
 
 ## Quick demo
 
-The offline walkthrough displays precomputed illustrative opportunities and comparable-product evidence. It does not call a model, scan listings, or need the vector store, neural checkpoint, credentials, or network access.
+The **AI deal-pricing walkthrough** replays a real local dashboard run captured on October 1, 2026. It shows DealNews RSS intake, Qwen's structured selection, description preprocessing, Chroma/BM25 retrieval, reciprocal-rank fusion, cross-encoder reranking, all three price signals, the 80/10/10 ensemble, and the planner's threshold decision. Its saved outputs and five comparables are historical model results, not current market prices or proof of pricing accuracy. Replay mode does not contact feeds or run models; reviewer choices update only the browser session. For a fresh scan and live inference, use the dashboard setup below. Pricing accuracy has not been established on an independent labeled holdout.
 
 ```sh
 uv sync --locked
 uv run pricer demo
 ```
 
-Open **http://127.0.0.1:7860** and select a row to inspect its details. Every price and comparable in this demo is synthetic; it demonstrates the review interface only. The app binds to localhost and does not share the demo publicly.
+Open **http://127.0.0.1:7860** to start with one guided example: a DJI camera listing that the run did not flag because its estimated fair price was below asking. The deal status shows each step from feed scan through the automatic screen to pending human review. Inspect its actual model outputs and retrieved products, then choose approve or reject, give a reason of at least 10 characters, and optionally enter an independently checked fair price. Applying the review visibly changes the status and adds the reason and any correction to the details. The corrected label is shown separately; the original estimate is preserved. These changes last only for the current browser session and do not alter the saved run or train a model. The other four captured deals and engineering stages are available to explore. The replay records that no deal met the planner's alert threshold. Fine-tuning is a separate feedback-training path, and the capture identifies the Ollama backend that actually ran. For a fresh RSS scan and live inference, follow [Live pricing setup](#live-pricing-setup) and launch the dashboard. The walkthrough binds to localhost and does not share publicly.
 
 ## Live pricing setup
 

@@ -214,6 +214,30 @@ def main():
         raise ValueError("training split contains no valid labeled examples")
     if not validation_items:
         raise ValueError("validation split contains no valid labeled examples")
+    train_profile(args.dataset, args.profile, args.output, train_items, validation_items, args=args)
+
+
+def train_profile(dataset_name, profile_name, output, train_items, validation_items, args=None):
+    """Fit one named profile using provided train and validation rows."""
+    if args is None:
+        class Options:
+            pass
+        args = Options()
+        args.profile = profile_name
+        for key, value in TRAINING_PROFILES[profile_name].items():
+            setattr(args, key.replace("-", "_"), value)
+        args.output = Path(output)
+    random.seed(42)
+    np.random.seed(42)
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+    args.profile = profile_name
+    args.output = Path(output)
+    train_items = [item for item in train_items if item.summary and math.isfinite(item.price) and item.price >= 0]
+    validation_items = [item for item in validation_items if item.summary and math.isfinite(item.price) and item.price >= 0]
+    if not train_items or not validation_items:
+        raise ValueError("training and validation splits must contain valid labeled examples")
     log_prices = np.log1p(np.asarray([item.price for item in train_items], dtype=np.float64))
     target_mean = float(log_prices.mean())
     target_std = float(log_prices.std())
@@ -322,7 +346,7 @@ def main():
                     "vectorizer_config": vectorizer_config,
                     "target_mean": target_mean,
                     "target_std": target_std,
-                    "dataset": args.dataset,
+                    "dataset": dataset_name,
                     "training_profile": args.profile,
                     "training_loss": args.loss,
                     "validation_mae": validation_mae,

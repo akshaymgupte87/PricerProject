@@ -6,13 +6,13 @@ import sys
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="pricer", description="Product pricing and deal intelligence")
-    parser.add_argument("command", choices=["api", "dashboard", "demo", "scan", "mcp", "build-index", "prepare-index", "train", "dpo", "gateway-eval"])
+    parser.add_argument("command", choices=["api", "dashboard", "demo", "scan", "mcp", "build-index", "prepare-index", "train", "dpo", "gateway-eval", "evaluate-pricing"])
     arguments = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(arguments[:1])
     remaining = arguments[1:]
     from pricer.config import load_environment
     load_environment()
-    if args.command in {"build-index", "prepare-index", "train", "dpo", "gateway-eval"}:
+    if args.command in {"build-index", "prepare-index", "train", "dpo", "gateway-eval", "evaluate-pricing"}:
         from importlib import import_module
         name = {
             "build-index": "build_bm25",
@@ -20,6 +20,7 @@ def main(argv: list[str] | None = None) -> None:
             "train": "train_neural",
             "dpo": "train_dpo",
             "gateway-eval": "gateway_eval",
+            "evaluate-pricing": "evaluate_pricing",
         }[args.command]
         previous = sys.argv
         try:

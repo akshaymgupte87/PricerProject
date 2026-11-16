@@ -6,7 +6,7 @@ I built a local-first application that compares deal listings with product evide
 
 [Run the offline walkthrough](#quick-demo) · [Architecture](docs/guides/architecture.md) · [Source](src/pricer/) · [Attribution](docs/guides/origins-and-credits.md)
 
-**Resume-ready summary:** Built a local-first product deal intelligence application in Python using hybrid Chroma/BM25 retrieval, a three-signal pricing ensemble, FastAPI/Gradio interfaces, and an auditable human-review workflow; added provider routing, evaluation tooling, and reproducible model/index jobs.
+**Resume-ready evidence:** Extended a course-derived pricing project into an installable Python application with configurable inference and persistent review workflows; implemented a reproducible catalog-price benchmark in which TF-IDF + Ridge reduced MAE from $95.65 to $66.71 versus a training-mean baseline on 999 held-out products. [Evaluation method](benchmarks/evaluation/PRICING_RESULTS.md) · [Recorded predictions and metrics](benchmarks/results/pricing-evidence.json) · [Scope of extensions](docs/guides/origins-and-credits.md).
 
 ## What I built
 
@@ -17,9 +17,21 @@ I built a local-first application that compares deal listings with product evide
 
 ## Evaluation evidence
 
-There is currently **no independently labelled pricing holdout result checked into this repository**, so no pricing MAE/WAPE or accuracy claim is reported. The tracked [gateway smoke measurement](benchmarks/results/gateway-smoke-2026-10-14.json) covers 10 warm, sequential LiteLLM requests: 10 succeeded, mean latency was 0.207 s, p95 was 0.253 s, and throughput was 4.822 requests/s. It measures nonempty responses and latency for one local setup; it says nothing about price accuracy, concurrency capacity, cold starts, or other machines.
+**What was evaluated:** title-based predictions of historical catalog prices, comparing a constant baseline with TF-IDF + Ridge. Retrieval relevance and the live three-signal pricing ensemble have no recorded quality result.
 
-For a pricing-quality claim, prepare independent product labels that do not overlap training products, run `pricer dpo evaluate` (or the shared evaluation tooling), and commit the dataset description, baseline, sample count, metrics, and report under `benchmarks/`. The DPO evaluator rejects ID/URL overlap, but the repository does not yet contain that independent holdout or a completed result. The small fixture below is synthetic and must never be counted as evaluation data.
+**Training/evaluation separation:** the fixed snapshot has 5,000 products: 4,001 training and 999 test examples. SHA-256 of each parent ASIN modulo 5 assigns test membership independently of price. Vocabulary, IDF, regression weights, and the baseline mean use only training rows. Exact duplicate IDs and normalized titles are rejected; related product variants may still cross the split. The candidate parameters were fixed before the recorded run, without holdout-based tuning.
+
+A completed [offline pricing benchmark](benchmarks/evaluation/PRICING_RESULTS.md) compares a training-mean baseline with TF-IDF + Ridge on **999 held-out products** from a fixed 5,000-product historical catalog snapshot. MAE was **$95.65 versus $66.71** (30.26% lower); RMSE was $264.59 versus $229.78, WAPE was 117.38% versus 81.86%, and both produced 999/999 finite predictions. Mean candidate inference latency was 0.388 ms per product on the recorded host. [Raw results and per-product predictions](benchmarks/results/pricing-evidence.json) include the dataset hash, parameters, and environment. This measures text regression on one category; upstream provenance is unverified and related variants may cross splits. It does not establish live ensemble accuracy or retrieval relevance.
+
+Reproduce from the repository root:
+
+```sh
+uv run python -m pricer.jobs.pricing_evidence
+```
+
+The separate [neural profile evaluation](benchmarks/evaluation/README.md) remains available for full training runs. The [gateway smoke measurement](benchmarks/results/gateway-smoke-2026-10-14.json) reports availability and latency only.
+
+The recorded comparison applies to the offline text-regression benchmark. A DPO or live-ensemble improvement claim still requires independently checked product labels excluded from training and retrieval indexes, plus a separate completed evaluation. The DPO evaluator rejects ID/URL overlap; its synthetic fixture must never be counted as quality evidence.
 
 ## Quick demo
 
